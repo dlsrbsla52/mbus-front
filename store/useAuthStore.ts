@@ -1,43 +1,49 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-
-interface User {
-  id: string;
-  userId: string;
-  name: string;
-  email?: string;
-}
+import type { Member, MemberType, Permission } from '@/lib/api/member';
 
 interface AuthState {
   accessToken: string | null;
-  user: User | null;
+  user: Member | null;
   isAuthenticated: boolean;
-  
-  // Actions
+  isBootstrapped: boolean;
+  userFetchError: string | null;
+
   setTokens: (access: string) => void;
-  setUser: (user: User) => void;
+  setUser: (user: Member) => void;
+  setBootstrapped: (value: boolean) => void;
+  setUserFetchError: (message: string | null) => void;
   logout: () => void;
+  hasPermission: (permission: Permission) => boolean;
+  hasMemberType: (types: MemberType | MemberType[]) => boolean;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
+export const useAuthStore = create<AuthState>()((set, get) => ({
+  accessToken: null,
+  user: null,
+  isAuthenticated: false,
+  isBootstrapped: false,
+  userFetchError: null,
+
+  setTokens: (accessToken) =>
+    set({ accessToken, isAuthenticated: true, userFetchError: null }),
+  setUser: (user) => set({ user, userFetchError: null }),
+  setBootstrapped: (value) => set({ isBootstrapped: value }),
+  setUserFetchError: (message) => set({ userFetchError: message }),
+  logout: () =>
+    set({
       accessToken: null,
       user: null,
       isAuthenticated: false,
-
-      setTokens: (accessToken) => 
-        set({ accessToken, isAuthenticated: true }),
-      
-      setUser: (user) => 
-        set({ user }),
-      
-      logout: () => 
-        set({ accessToken: null, user: null, isAuthenticated: false }),
+      userFetchError: null,
     }),
-    {
-      name: 'auth-storage', // Next.js 환경에서 localStorage 키 이름
-      storage: createJSONStorage(() => localStorage),
-    }
-  )
-);
+
+  hasPermission: (permission) =>
+    get().user?.permissions?.includes(permission) ?? false,
+
+  hasMemberType: (types) => {
+    const memberType = get().user?.memberType;
+    if (!memberType) return false;
+    const allowed = Array.isArray(types) ? types : [types];
+    return allowed.includes(memberType);
+  },
+}));

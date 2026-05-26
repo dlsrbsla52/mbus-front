@@ -36,23 +36,19 @@ export default function JoinPage() {
   const onSubmit = async (data: JoinFormType) => {
     try {
       setServerError('');
-      // 회원가입 API 호출
-      await AuthService.join({
+      await AuthService.register({
         loginId: data.loginId,
         email: data.email,
         password: data.password,
         name: data.name,
       });
-      
-      // 회원가입 성공 시 로그인 페이지로 이동
-      router.push('/login?success=join');
-    } catch (error: any) {
-      const errorData = error.response?.data;
-      if (errorData?.result === "VALIDATION_FAIL" && errorData.errors?.length > 0) {
-        setServerError(errorData.errors[0].message);
-      } else {
-        setServerError(errorData?.message || '회원가입 처리 중 오류가 발생했습니다.');
-      }
+
+      router.push('/login?success=register');
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? '회원가입 처리 중 오류가 발생했습니다.';
+      setServerError(message);
     }
   };
 

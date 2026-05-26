@@ -1,44 +1,67 @@
 import { api } from './client';
+import type { ApiResponse } from './types';
 
-// DTO Interfaces
-export interface LoginRequest {
-  loginId: string;
-  password?: string; // 소셜 로그인 등이 있다면 선택적일 수 있음. 기본 비밀번호 로그인 가정
-}
-
-export interface JoinRequest {
+export interface RegisterRequest {
   loginId: string;
   email: string;
-  password?: string;
-  name?: string;
+  password: string;
+  name: string;
+}
+
+export interface LoginRequest {
+  loginId: string;
+  password: string;
 }
 
 export interface LoginResponse {
   accessToken: string;
-  tokenType: string;
 }
 
-export interface ApiResponse<T> {
-  result: string;
-  code: string;
-  message: string;
-  data: T;
+export interface PasswordResetRequest {
+  email: string;
 }
 
-// APIs
+export interface PasswordResetVerifyRequest {
+  token: string;
+}
+
+export interface PasswordResetConfirmRequest {
+  token: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+const unwrap = <T>(p: Promise<{ data: ApiResponse<T> }>): Promise<T> =>
+  p.then((res) => res.data.data);
+
 export const AuthService = {
-  login: async (data: LoginRequest): Promise<LoginResponse> => {
-    // 백엔드 엔드포인트에 따라 URL 수정 필요
-    const response = await api.post<ApiResponse<LoginResponse>>('/api/v1/auth/login', data);
-    return response.data.data;
+  register: (data: RegisterRequest) =>
+    unwrap<null>(api.post('/api/v1/auth/register', data)),
+
+  login: (data: LoginRequest) =>
+    unwrap<LoginResponse>(api.post('/api/v1/auth/login', data)),
+
+  logout: () => unwrap<null>(api.post('/api/v1/auth/logout')),
+
+  verifyEmail: (token: string) =>
+    unwrap<null>(api.get('/api/v1/auth/verify-email', { params: { token } })),
+
+  refresh: () =>
+    unwrap<LoginResponse>(api.post('/api/v1/auth/token/refresh')),
+
+  passwordReset: {
+    request: (data: PasswordResetRequest) =>
+      unwrap<null>(api.post('/api/v1/auth/password-reset/request', data)),
+    verify: (data: PasswordResetVerifyRequest) =>
+      unwrap<null>(api.post('/api/v1/auth/password-reset/verify', data)),
+    confirm: (data: PasswordResetConfirmRequest) =>
+      unwrap<null>(api.post('/api/v1/auth/password-reset/confirm', data)),
   },
 
-  join: async (data: JoinRequest): Promise<void> => {
-    await api.post('/api/v1/auth/join', data);
-  },
-
-  logout: async (): Promise<void> => {
-    // HttpOnly 쿠키의 경우 백엔드에서 Set-Cookie로 삭제 처리를 수행해야 함
-    await api.post('/api/v1/auth/logout');
-  },
+  changePassword: (data: ChangePasswordRequest) =>
+    unwrap<null>(api.post('/api/v1/auth/password/change', data)),
 };

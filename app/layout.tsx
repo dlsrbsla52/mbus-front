@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
+import SiteChrome from "@/components/layout/SiteChrome";
+import AuthGate from "@/components/auth/AuthGate";
 
 const notoHighlight = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
@@ -27,9 +27,9 @@ export default function RootLayout({
       className={`${notoHighlight.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-noto">
-        <Header />
-        <main className="flex-grow">{children}</main>
-        <Footer />
+        <AuthGate>
+          <SiteChrome>{children}</SiteChrome>
+        </AuthGate>
       </body>
     </html>
   );

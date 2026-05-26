@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AuthService } from '@/lib/api/auth';
 import { useAuthStore } from '@/store/useAuthStore';
+import { messageForCode } from '@/lib/api/result-codes';
 
 const loginSchema = z.object({
   loginId: z.string().min(4, '아이디는 최소 4자 이상이어야 합니다.'),
@@ -16,11 +17,11 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+function LoginInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setTokens = useAuthStore((state) => state.setTokens);
-  const setUser = useAuthStore((state) => state.setUser);
-  
+
   const [serverError, setServerError] = useState('');
 
   const {
@@ -35,21 +36,16 @@ export default function LoginPage() {
     try {
       setServerError('');
       const response = await AuthService.login(data);
-      
-      // Zustand Store Update
       setTokens(response.accessToken);
-      // setUser(response.user); // TODO: JWT payload decode or Fetch user info API logic if needed
-      
-      // Main redirection
-      router.push('/');
-    } catch (error: any) {
-      const errorData = error.response?.data;
-      if (errorData?.result === "VALIDATION_FAIL" && errorData.errors?.length > 0) {
-        // 서버 측 검증 에러 첫 번째 메시지 노출
-        setServerError(errorData.errors[0].message);
-      } else {
-        setServerError(errorData?.message || '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.');
-      }
+      const rawNext = searchParams.get('next');
+      const next = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
+      router.push(next);
+    } catch (error) {
+      const data = (error as { response?: { data?: { code?: string; message?: string } } })
+        ?.response?.data;
+      const fallback =
+        data?.message ?? '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.';
+      setServerError(data?.code ? messageForCode(data.code, fallback) : fallback);
     }
   };
 
@@ -119,7 +115,7 @@ export default function LoginPage() {
               </div>
 
               <div className="text-sm">
-                <Link href="#" className="font-bold text-brand-blue hover:text-blue-600 transition-colors">
+                <Link href="/password-reset/request" className="font-bold text-brand-blue hover:text-blue-600 transition-colors">
                   비밀번호를 잊으셨나요?
                 </Link>
               </div>
@@ -138,5 +134,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
   );
 }

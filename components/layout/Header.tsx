@@ -2,15 +2,40 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Search, Menu, X, Home, LogIn, UserPlus } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Search, Menu, X, Home, LogIn, UserPlus, User, LogOut, ShieldCheck } from "lucide-react";
 import { useScrollPos } from "@/hooks/useScrollPos";
 import { NAV_ITEMS } from "@/constants/navigation";
+import { useAuthStore } from "@/store/useAuthStore";
+import { AuthService } from "@/lib/api/auth";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isScrolled = useScrollPos(50);
   const pathname = usePathname();
+  const router = useRouter();
+
+  const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isBootstrapped = useAuthStore((s) => s.isBootstrapped);
+  const hasPermission = useAuthStore((s) => s.hasPermission);
+  const logout = useAuthStore((s) => s.logout);
+
+  const isLoggedIn = isBootstrapped && isAuthenticated && !!user;
+  const canManage = isLoggedIn && hasPermission("MANAGE");
+  const displayName = user?.loginId ?? user?.email ?? "";
+
+  const handleLogout = async () => {
+    setIsMenuOpen(false);
+    try {
+      await AuthService.logout();
+    } catch {
+      /* 서버 로그아웃 실패해도 로컬 상태는 정리 */
+    } finally {
+      logout();
+      router.push("/");
+    }
+  };
   
   // 홈 페이지 여부 확인
   const isHomePage = pathname === "/";
@@ -56,12 +81,33 @@ const Header = () => {
             <Home size={14} /> Home
           </Link>
           <div className="w-px h-3 bg-white/20" />
-          <Link href="/login" className="hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1">
-            <LogIn size={14} /> Login
-          </Link>
-          <Link href="/join" className="hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1 border border-white/20 rounded-full hover:bg-white/10 transition-all">
-            <UserPlus size={14} /> Join
-          </Link>
+          {isLoggedIn ? (
+            <>
+              {canManage && (
+                <Link href="/manager" className="hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1">
+                  <ShieldCheck size={14} /> 관리자
+                </Link>
+              )}
+              <Link href="/mypage" className="hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1">
+                <User size={14} /> {displayName || "마이페이지"}
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1 border border-white/20 rounded-full hover:bg-white/10 transition-all"
+              >
+                <LogOut size={14} /> Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1">
+                <LogIn size={14} /> Login
+              </Link>
+              <Link href="/join" className="hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1 border border-white/20 rounded-full hover:bg-white/10 transition-all">
+                <UserPlus size={14} /> Join
+              </Link>
+            </>
+          )}
           <button className="p-2 hover:bg-white/10 rounded-full transition-all">
             <Search size={20} />
           </button>
@@ -94,10 +140,20 @@ const Header = () => {
             </Link>
           ))}
           <div className="pt-12 border-t border-white/10 flex flex-col space-y-6">
-             <div className="flex items-center gap-6">
-                <Link href="/login" className="text-xl font-bold text-gray-400 hover:text-white" onClick={() => setIsMenuOpen(false)}>Login</Link>
-                <Link href="/join" className="text-xl font-bold text-gray-400 hover:text-white" onClick={() => setIsMenuOpen(false)}>Join</Link>
-             </div>
+             {isLoggedIn ? (
+               <div className="flex flex-col gap-6">
+                  {canManage && (
+                    <Link href="/manager" className="text-xl font-bold text-gray-400 hover:text-white" onClick={() => setIsMenuOpen(false)}>관리자</Link>
+                  )}
+                  <Link href="/mypage" className="text-xl font-bold text-gray-400 hover:text-white" onClick={() => setIsMenuOpen(false)}>{displayName || "마이페이지"}</Link>
+                  <button onClick={handleLogout} className="text-left text-xl font-bold text-gray-400 hover:text-white">Logout</button>
+               </div>
+             ) : (
+               <div className="flex items-center gap-6">
+                  <Link href="/login" className="text-xl font-bold text-gray-400 hover:text-white" onClick={() => setIsMenuOpen(false)}>Login</Link>
+                  <Link href="/join" className="text-xl font-bold text-gray-400 hover:text-white" onClick={() => setIsMenuOpen(false)}>Join</Link>
+               </div>
+             )}
              <p className="text-sm text-gray-600 font-medium">© 2024 MEDIABUS. All rights reserved.</p>
           </div>
         </div>
