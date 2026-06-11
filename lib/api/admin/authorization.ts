@@ -28,7 +28,7 @@ export interface AssignPermissionRequest {
 }
 
 export interface ChangeMemberRoleRequest {
-  roleIds: string[];
+  roleName: string;
 }
 
 const unwrap = <T>(p: Promise<{ data: ApiResponse<T> }>): Promise<T> =>

@@ -120,8 +120,16 @@ export const MemberService = {
 export const AdminMemberService = {
   list: (params: AdminMemberListParams = {}) =>
     api
-      .get<ApiResponse<BackendPage<AdminMemberRow>>>('/api/v1/admin/members', { params })
-      .then((res) => toPageResult(res.data.data)),
+      .get<ApiResponse<BackendPage<AdminMemberRow & { memberId?: string }>>>(
+        '/api/v1/admin/members',
+        { params },
+      )
+      .then((res) =>
+        toPageResult(res.data.data, (raw) => ({
+          ...raw,
+          id: raw.id ?? raw.memberId ?? '',
+        })),
+      ),
   detail: (memberId: string) =>
     unwrap<AdminMemberDetail>(api.get(`/api/v1/admin/members/${memberId}`)),
   deactivate: (memberId: string) =>
