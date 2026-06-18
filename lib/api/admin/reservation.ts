@@ -1,11 +1,10 @@
 import { api } from '../client';
 import { toPageResult } from '../types';
 import type { ApiResponse, BackendPage } from '../types';
-import type { Reservation } from '../reservation';
+import type { MyReservation } from '../reservation';
 
-export interface AdminReservationRow extends Reservation {
+export interface AdminReservationRow extends MyReservation {
   memberName: string;
-  stopName: string;
 }
 
 export interface AdminReservationListParams {
@@ -15,7 +14,7 @@ export interface AdminReservationListParams {
   stopId?: string;
   from?: string;
   to?: string;
-  status?: Reservation['status'];
+  status?: MyReservation['status'];
 }
 
 export const AdminReservationService = {

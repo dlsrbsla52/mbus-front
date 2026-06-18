@@ -34,7 +34,7 @@ const HomeHero = () => {
             포트폴리오 보기 <ArrowRight className="group-hover:translate-x-1 transition-transform" />
           </Link>
           <Link 
-            href="/contact" 
+            href="/reservation"
             className="px-10 py-4 bg-white/10 hover:bg-white/20 text-white font-bold rounded-lg backdrop-blur-md border border-white/20 transition-all"
           >
             상담 요청하기

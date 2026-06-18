@@ -14,10 +14,12 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     return <>{children}</>;
   }
 
+  const isHome = pathname === '/';
+
   return (
     <>
       <Header />
-      <main className="flex-grow">{children}</main>
+      <main className={`flex-grow${isHome ? '' : ' pt-16'}`}>{children}</main>
       <Footer />
     </>
   );

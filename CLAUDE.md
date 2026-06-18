@@ -34,16 +34,26 @@ npm run gen:api  # OpenAPI 타입 재생성 (iam:8181 / stop:8182 / reservation:
 
 - **MSA**: Gateway `localhost:8080` 단일 진입점 → iam(8181) / stop(8182) / reservation(8183).
   `NEXT_PUBLIC_API_BASE_URL` 로 변경 가능 (`.env.local.example` 참고).
+- **Swagger**: 각 서비스 직접 접속으로 확인 (`/api-docs` 경로).
+  - stop: `http://localhost:8182/swagger-ui/index.html`
+  - reservation: `http://localhost:8183/swagger-ui/index.html`
+  - **`/internal` 경로(`/api/v1/internal/...`)는 S2S 전용 — 프론트엔드에서 절대 호출 금지.**
 - **공통 응답 봉투**: `ApiResponse<T> = { code, message, data }`. `code === "00000"` 이 성공.
   주요 코드는 `lib/api/result-codes.ts` 의 `RESULT_CODES` 카탈로그를 사용하고, 분기 메시지는
   `messageForCode(code, fallback)` 로 통일.
-- **페이지 응답**: `PageResult<T> = { content, page, size, totalElements, totalPages }`,
+- **페이지 응답**: 백엔드 실제 형태는 `{ items, totalCnt, pageRows, pageNum }` (`BackendPage<T>`).
+  `toPageResult()` 가 프론트 `PageResult<T> = { content, page, size, totalElements, totalPages }` 로 변환.
   `page` 는 0-base.
 - **인증 토큰**:
   - Access Token → 응답 `data.accessToken` (60분, 메모리 보관)
   - Refresh Token → HttpOnly 쿠키 `refresh_token` (Path=`/api/v1/auth`, 7일)
   - 재발급 경로는 **`POST /api/v1/auth/token/refresh`** (legacy `/auth/refresh` 가 아님).
 - **CORS**: axios 클라이언트는 `withCredentials: true` (쿠키 자동 전송).
+- **날짜/시간 직렬화**: API 요청 시 raw 문자열 직접 사용 금지. 반드시 `lib/api/date-serializer.ts`의 공통 serializer를 거친다.
+  - `LocalDate` 필드 → `toApiLocalDate(str)` → `YYYY-MM-DD`
+  - `OffsetDateTime` 필드 → `toApiOffsetDateTime(str, time?)` → `YYYY-MM-DDTHH:mm:ss+09:00` (KST 고정)
+  - `new Date().toISOString()` 직접 사용 금지 — UTC 변환으로 한국 시간 의미가 틀어짐.
+  - 도메인별 타입: `consultationRequestedAt` → OffsetDateTime, `desiredContractStartDate` → LocalDate.
 
 ## 아키텍처
 

@@ -3,24 +3,31 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
-import { ReservationService, type Reservation } from '@/lib/api/reservation';
+import {
+  ReservationService,
+  RESERVATION_STATUS_LABEL,
+  type MyReservation,
+} from '@/lib/api/reservation';
 import type { PageResult } from '@/lib/api/types';
 
 export default function ReservationListPage() {
-  const [page, setPage] = useState<PageResult<Reservation> | null>(null);
+  const [page, setPage] = useState<PageResult<MyReservation> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     ReservationService.listMine({ page: 0, size: 20 })
-      .then(setPage)
+      .then((result) => { if (!cancelled) setPage(result); })
       .catch((e: unknown) => {
+        if (cancelled) return;
         const message =
           (e as { response?: { data?: { message?: string } } })?.response?.data
             ?.message ?? '예약 목록을 불러오지 못했습니다.';
         setError(message);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
   return (
@@ -45,15 +52,22 @@ export default function ReservationListPage() {
 
       <ul className="mt-6 divide-y divide-brand-gray-100 rounded-lg border border-brand-gray-200 bg-white">
         {page?.content.map((r) => (
-          <li key={r.id} className="flex items-center justify-between px-5 py-4">
+          <li key={r.reservationId} className="flex items-center justify-between px-5 py-4">
             <div>
-              <p className="text-sm font-bold text-brand-black">정류소 {r.stopId}</p>
-              <p className="text-xs text-brand-gray-500">
-                {r.startAt} ~ {r.endAt}
+              <p className="text-sm font-bold text-brand-black">
+                {r.stopName ?? `정류소 ${r.stopNumber ?? r.stopId}`}
               </p>
+              <p className="text-xs text-brand-gray-500">
+                상담 희망: {new Date(r.consultationRequestedAt).toLocaleString('ko-KR')}
+              </p>
+              {r.desiredContractStartDate && (
+                <p className="text-xs text-brand-gray-500">
+                  계약 시작 희망: {r.desiredContractStartDate}
+                </p>
+              )}
             </div>
             <span className="rounded-full bg-brand-gray-100 px-3 py-1 text-xs font-bold text-brand-gray-700">
-              {r.status}
+              {RESERVATION_STATUS_LABEL[r.status] ?? r.status}
             </span>
           </li>
         ))}
