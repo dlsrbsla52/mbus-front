@@ -1,13 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, Plus, Search, Trash2 } from 'lucide-react';
+import { Search } from 'lucide-react';
 import PageHeader from '@/components/common/PageHeader';
 import EmptyState from '@/components/common/EmptyState';
 import {
   AuthorizationService,
   type PermissionSummary,
-  type RoleDetail,
   type RoleSummary,
 } from '@/lib/api/admin/authorization';
 import { AdminMemberService, type AdminMemberRow } from '@/lib/api/member';
@@ -17,12 +16,11 @@ export default function ManagerRolePage() {
   return (
     <>
       <PageHeader
-        title="역할·권한 관리"
-        description="멤버를 검색해 역할을 부여하고, 역할별 권한을 설정합니다."
+        title="회원 역할 부여"
+        description="멤버를 검색해 회원별 역할을 부여합니다."
       />
       <div className="flex flex-col gap-6">
         <MemberRolePanel />
-        <RolePermissionSection />
       </div>
     </>
   );
@@ -96,7 +94,7 @@ function MemberRolePanel() {
     setSuccess('');
     try {
       const summary = await AuthorizationService.getMemberRole(member.id);
-      setSelectedRoleName((summary.roles ?? [])[0]?.name ?? '');
+      setSelectedRoleName(summary.role?.name ?? '');
       setCurrentPermissions(summary.permissions ?? []);
     } catch (e) {
       const res = (e as ErrRes).response?.data;
@@ -122,6 +120,11 @@ function MemberRolePanel() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PanelIntro
+        eyebrow="회원별 설정"
+        title="회원에게 역할 부여"
+        description="검색한 회원 한 명의 역할을 변경합니다. 오른쪽 권한 목록은 선택된 회원에게 현재 적용되는 권한입니다."
+      />
       {error && <ErrorBox message={error} />}
       {success && (
         <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
@@ -191,7 +194,8 @@ function MemberRolePanel() {
           <div className="grid grid-cols-1 divide-y divide-brand-gray-200 lg:grid-cols-[1fr_240px] lg:divide-x lg:divide-y-0">
             {/* 역할 선택 */}
             <div className="p-5">
-              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-gray-500">역할 선택</p>
+              <p className="mb-1 text-xs font-bold uppercase tracking-wider text-brand-gray-500">부여할 역할 선택</p>
+              <p className="mb-3 text-xs text-brand-gray-400">아래 권한 칩은 각 역할 템플릿의 현재 권한입니다.</p>
               {roleLoading ? (
                 <p className="text-sm text-brand-gray-400">불러오는 중…</p>
               ) : allRoles.length === 0 ? (
@@ -238,7 +242,8 @@ function MemberRolePanel() {
 
             {/* 현재 보유 권한 */}
             <div className="p-5">
-              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-gray-500">현재 보유 권한</p>
+              <p className="mb-1 text-xs font-bold uppercase tracking-wider text-brand-gray-500">선택 회원의 적용 권한</p>
+              <p className="mb-3 text-xs text-brand-gray-400">저장 후 이 회원에게 적용되는 권한입니다.</p>
               {currentPermissions.length === 0 ? (
                 <p className="text-sm text-brand-gray-400">권한 없음</p>
               ) : (
@@ -253,7 +258,7 @@ function MemberRolePanel() {
                   ))}
                 </ul>
               )}
-              <p className="mt-4 text-[10px] text-brand-gray-400">저장하면 선택한 역할의 권한으로 업데이트됩니다.</p>
+              <p className="mt-4 text-[10px] text-brand-gray-400">역할 자체 권한은 별도 역할 권한 템플릿 화면에서 관리합니다.</p>
             </div>
           </div>
         </div>
@@ -269,189 +274,27 @@ function MemberRolePanel() {
   );
 }
 
-// ─── 보조: 역할별 권한 편집 (접기/펼치기) ────────────────────────────────────
-
-function RolePermissionSection() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="rounded-lg border border-brand-gray-200 bg-white">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left"
-      >
-        <div>
-          <p className="text-sm font-bold text-brand-black">역할별 권한 편집</p>
-          <p className="text-xs text-brand-gray-500">각 역할에 권한을 추가하거나 해제합니다.</p>
-        </div>
-        {open ? <ChevronUp className="h-4 w-4 text-brand-gray-400" /> : <ChevronDown className="h-4 w-4 text-brand-gray-400" />}
-      </button>
-      {open && (
-        <div className="border-t border-brand-gray-200 p-5">
-          <RolePermissionPanel />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RolePermissionPanel() {
-  const [roles, setRoles] = useState<RoleSummary[]>([]);
-  const [allPermissions, setAllPermissions] = useState<PermissionSummary[]>([]);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
-  const [roleDetail, setRoleDetail] = useState<RoleDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const loadRoles = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [r, p] = await Promise.all([
-        AuthorizationService.listRoles(),
-        AuthorizationService.listPermissions(),
-      ]);
-      setRoles(r);
-      setAllPermissions(p);
-      if (r.length > 0) setSelectedRoleId((prev) => prev ?? r[0].id);
-    } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '역할 정보를 불러오지 못했습니다.'));
-    } finally { setLoading(false); }
-  }, []);
-
-  const loadDetail = useCallback(async (roleId: string) => {
-    setDetailLoading(true);
-    try {
-      setRoleDetail(await AuthorizationService.getRole(roleId));
-    } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '역할 상세를 불러오지 못했습니다.'));
-    } finally { setDetailLoading(false); }
-  }, []);
-
-  useEffect(() => { loadRoles(); }, [loadRoles]);
-  useEffect(() => { if (selectedRoleId) loadDetail(selectedRoleId); }, [selectedRoleId, loadDetail]);
-
-  const onAssign = async (permissionName: string) => {
-    if (!selectedRoleId) return;
-    setError('');
-    try {
-      await AuthorizationService.assignPermissionToRole(selectedRoleId, { permissionName });
-      await loadDetail(selectedRoleId);
-    } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '권한 부여에 실패했습니다.'));
-    }
-  };
-
-  const onRevoke = async (permissionName: string) => {
-    if (!selectedRoleId) return;
-    if (!confirm(`"${permissionName}" 권한을 해제하시겠습니까?`)) return;
-    setError('');
-    try {
-      await AuthorizationService.removePermissionFromRole(selectedRoleId, permissionName);
-      await loadDetail(selectedRoleId);
-    } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '권한 해제에 실패했습니다.'));
-    }
-  };
-
-  if (loading) return <p className="text-sm text-brand-gray-400">불러오는 중…</p>;
-  if (roles.length === 0) return <p className="text-sm text-brand-gray-400">등록된 역할이 없습니다.</p>;
-
-  const assignedNames = new Set(roleDetail?.permissions.map((p) => String(p.name)) ?? []);
-  const availableToAssign = allPermissions.filter((p) => !assignedNames.has(String(p.name)));
-
-  return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[200px_1fr]">
-      {error && <div className="lg:col-span-2"><ErrorBox message={error} /></div>}
-
-      {/* 역할 목록 */}
-      <ul className="flex flex-col gap-0.5">
-        {roles.map((role) => (
-          <li key={role.id ?? role.name}>
-            <button
-              type="button"
-              onClick={() => setSelectedRoleId(role.id)}
-              className={
-                role.id === selectedRoleId
-                  ? 'flex w-full flex-col items-start rounded-md bg-brand-black px-3 py-2 text-left text-sm text-white'
-                  : 'flex w-full flex-col items-start rounded-md px-3 py-2 text-left text-sm text-brand-gray-700 hover:bg-brand-gray-50'
-              }
-            >
-              <span className="font-semibold">{role.name}</span>
-              {role.description && (
-                <span className={`text-[10px] ${role.id === selectedRoleId ? 'text-brand-gray-300' : 'text-brand-gray-500'}`}>
-                  {role.description}
-                </span>
-              )}
-            </button>
-          </li>
-        ))}
-      </ul>
-
-      {/* 권한 편집 */}
-      {detailLoading || !roleDetail ? (
-        <p className="text-sm text-brand-gray-400">로딩 중…</p>
-      ) : (
-        <div className="flex flex-col gap-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-brand-gray-500">
-              {roleDetail.name} — 부여된 권한 ({roleDetail.permissions.length})
-            </p>
-            {roleDetail.permissions.length === 0 ? (
-              <p className="mt-2 text-xs text-brand-gray-400">부여된 권한이 없습니다.</p>
-            ) : (
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {roleDetail.permissions.map((p) => (
-                  <li key={String(p.name)} className="inline-flex items-center gap-1 rounded-full bg-brand-blue-soft px-2.5 py-1 text-xs font-semibold text-brand-blue">
-                    {String(p.name)}
-                    <button
-                      type="button"
-                      onClick={() => onRevoke(String(p.name))}
-                      className="rounded-full p-0.5 hover:bg-brand-blue/20"
-                      aria-label={`${p.name} 해제`}
-                    >
-                      <Trash2 className="h-2.5 w-2.5" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {availableToAssign.length > 0 && (
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-brand-gray-500">추가 가능</p>
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {availableToAssign.map((p) => (
-                  <li key={String(p.name)}>
-                    <button
-                      type="button"
-                      onClick={() => onAssign(String(p.name))}
-                      className="inline-flex items-center gap-1 rounded-full border border-brand-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-brand-gray-700 hover:border-brand-black hover:bg-brand-gray-50"
-                    >
-                      <Plus className="h-2.5 w-2.5" />
-                      {String(p.name)}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── 공통 ────────────────────────────────────────────────────────────────────
 
 type ErrRes = { response?: { data?: { code?: string; message?: string } } };
+
+function PanelIntro({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-lg border border-brand-gray-200 bg-white px-5 py-4">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-brand-blue">{eyebrow}</p>
+      <h2 className="mt-1 text-base font-bold text-brand-black">{title}</h2>
+      <p className="mt-1 text-sm text-brand-gray-500">{description}</p>
+    </div>
+  );
+}
 
 function ErrorBox({ message }: { message: string }) {
   return (

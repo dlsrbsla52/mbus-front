@@ -78,13 +78,30 @@ export const MANAGER_NAV: ManagerNavGroup[] = [
     ],
   },
   {
+    title: "정산",
+    items: [
+      {
+        label: "정산 관리",
+        href: "/manager/commission",
+        icon: "CirclePercent",
+        requireMemberType: ["ADMIN_MASTER"],
+      },
+    ],
+  },
+  {
     title: "권한",
     items: [
       {
-        label: "역할·권한",
+        label: "회원 역할 부여",
         href: "/manager/role",
         icon: "ShieldCheck",
         requireMemberType: ["ADMIN_MASTER"],
+      },
+      {
+        label: "역할 권한 템플릿",
+        href: "/manager/role-permission",
+        icon: "KeyRound",
+        requireMemberType: ["ADMIN_MASTER", "ADMIN_DEVELOPER"],
       },
     ],
   },

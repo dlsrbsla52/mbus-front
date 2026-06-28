@@ -9,10 +9,23 @@ import Link from 'next/link';
 import { AuthService } from '@/lib/api/auth';
 
 const joinSchema = z.object({
-  name: z.string().min(2, '이름은 최소 2자 이상이어야 합니다.').max(50, '이름이 너무 깁니다.'),
-  loginId: z.string().min(4, '아이디는 최소 4자 이상이어야 합니다.'),
+  memberName: z.string().min(2, '이름은 최소 2자 이상이어야 합니다.').max(10, '이름은 최대 10자까지 입력할 수 있습니다.'),
+  loginId: z
+    .string()
+    .min(4, '아이디는 최소 4자 이상이어야 합니다.')
+    .max(50, '아이디는 최대 50자까지 입력할 수 있습니다.')
+    .regex(/^[a-zA-Z0-9_]+$/, '아이디는 영문, 숫자, 언더스코어만 사용할 수 있습니다.'),
   email: z.string().email('유효한 이메일을 입력해주세요.'),
-  password: z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다.'),
+  phoneNumber: z
+    .string()
+    .regex(/^01[016789]\d{7,8}$/, '휴대폰 번호는 하이픈 없이 올바른 번호로 입력해주세요.'),
+  password: z
+    .string()
+    .min(8, '비밀번호는 최소 8자 이상이어야 합니다.')
+    .regex(
+      /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]+$/,
+      '비밀번호는 영문, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
+    ),
   passwordConfirm: z.string(),
 }).refine((data) => data.password === data.passwordConfirm, {
   message: "비밀번호가 일치하지 않습니다.",
@@ -37,10 +50,12 @@ export default function JoinPage() {
     try {
       setServerError('');
       await AuthService.register({
+        memberName: data.memberName,
         loginId: data.loginId,
-        email: data.email,
         password: data.password,
-        name: data.name,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        memberType: 'MEMBER',
       });
 
       router.push('/login?success=register');
@@ -77,16 +92,16 @@ export default function JoinPage() {
             )}
 
             <div>
-              <label htmlFor="name" className="block text-sm font-bold text-gray-700">이름</label>
+              <label htmlFor="memberName" className="block text-sm font-bold text-gray-700">이름</label>
               <div className="mt-2">
                 <input
-                  id="name"
+                  id="memberName"
                   type="text"
-                  {...register('name')}
+                  {...register('memberName')}
                   className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-blue focus:border-brand-blue sm:text-sm"
                   placeholder="홍길동"
                 />
-                {errors.name && <p className="mt-1 text-sm text-red-600 font-medium">{errors.name.message as string}</p>}
+                {errors.memberName && <p className="mt-1 text-sm text-red-600 font-medium">{errors.memberName.message as string}</p>}
               </div>
             </div>
 
@@ -115,6 +130,22 @@ export default function JoinPage() {
                   placeholder="name@company.com"
                 />
                 {errors.email && <p className="mt-1 text-sm text-red-600 font-medium">{errors.email.message as string}</p>}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="phoneNumber" className="block text-sm font-bold text-gray-700">휴대폰 번호</label>
+              <div className="mt-2">
+                <input
+                  id="phoneNumber"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  {...register('phoneNumber')}
+                  className="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-brand-blue focus:border-brand-blue sm:text-sm"
+                  placeholder="01012345678"
+                />
+                {errors.phoneNumber && <p className="mt-1 text-sm text-red-600 font-medium">{errors.phoneNumber.message as string}</p>}
               </div>
             </div>
 

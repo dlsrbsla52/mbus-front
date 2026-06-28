@@ -19,7 +19,7 @@ export interface RoleDetail extends RoleSummary {
 
 export interface MemberRoleSummary {
   memberId: string;
-  roles: RoleSummary[];
+  role: RoleSummary;
   permissions: PermissionSummary[];
 }
 
@@ -62,7 +62,7 @@ export const AuthorizationService = {
       api.get(`/api/v1/admin/authorization/members/${memberId}/role`),
     ),
   changeMemberRole: (memberId: string, data: ChangeMemberRoleRequest) =>
-    unwrap<MemberRoleSummary>(
+    unwrap<null>(
       api.put(`/api/v1/admin/authorization/members/${memberId}/role`, data),
     ),
 };

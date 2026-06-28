@@ -76,6 +76,7 @@ export interface AdminMemberRow extends Member {
 }
 
 export interface AdminMemberDetail extends AdminMemberRow {
+  memberName?: string;
   contractCount: number;
   reservationCount: number;
 }
@@ -128,6 +129,19 @@ export const AdminMemberService = {
         toPageResult(res.data.data, (raw) => ({
           ...raw,
           id: raw.id ?? raw.memberId ?? '',
+        })),
+      ),
+  search: (keyword: string): Promise<AdminMemberRow[]> =>
+    api
+      .get<ApiResponse<(AdminMemberRow & { memberId?: string })[]>>(
+        '/api/v1/admin/members/search',
+        { params: { keyword } },
+      )
+      .then((res) =>
+        (res.data.data ?? []).map((raw) => ({
+          ...raw,
+          id: raw.id ?? raw.memberId ?? '',
+          lastLoginAt: null,
         })),
       ),
   detail: (memberId: string) =>

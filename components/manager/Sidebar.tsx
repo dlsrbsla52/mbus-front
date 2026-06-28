@@ -7,7 +7,9 @@ import {
   BellRing,
   CalendarClock,
   CircleDollarSign,
+  CirclePercent,
   FileSignature,
+  KeyRound,
   LayoutDashboard,
   MapPin,
   ShieldCheck,
@@ -27,6 +29,8 @@ const ICONS: Record<string, LucideIcon> = {
   Users,
   BellRing,
   ShieldCheck,
+  CirclePercent,
+  KeyRound,
 };
 
 interface SidebarProps {

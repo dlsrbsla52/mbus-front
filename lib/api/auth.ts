@@ -2,10 +2,13 @@ import { api } from './client';
 import type { ApiResponse } from './types';
 
 export interface RegisterRequest {
+  memberName: string;
   loginId: string;
-  email: string;
   password: string;
-  name: string;
+  email: string;
+  phoneNumber: string;
+  memberType: 'MEMBER' | 'BUSINESS' | 'ADMIN_USER' | 'ADMIN_MASTER' | 'ADMIN_DEVELOPER';
+  businessNumber?: string;
 }
 
 export interface LoginRequest {
