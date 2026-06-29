@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { AuthService } from '@/lib/api/auth';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 const schema = z
   .object({
@@ -42,8 +42,7 @@ export default function ChangePasswordPage() {
       setDone(true);
       reset();
     } catch (e) {
-      const res = (e as { response?: { data?: { code?: string; message?: string } } }).response?.data;
-      setServerError(messageForCode(res?.code ?? '', res?.message ?? '비밀번호 변경에 실패했습니다.'));
+      setServerError(extractApiError(e, '비밀번호 변경에 실패했습니다.'));
     }
   };
 

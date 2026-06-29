@@ -1,6 +1,6 @@
 import { api } from './client';
 import { toPageResult } from './types';
-import type { ApiResponse, BackendPage } from './types';
+import type { ApiResponse, BackendPage, PageResult } from './types';
 
 /**
  * 백엔드 iam `MemberResponse.memberType` enum.
@@ -17,8 +17,110 @@ export type MemberType =
   | 'ADMIN_MASTER'
   | 'ADMIN_DEVELOPER';
 
-export type MemberStatus = 'ACTIVE' | 'SUSPENDED' | 'WITHDRAWN';
+export type MemberStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'WITHDRAWN';
 export type Permission = 'READ' | 'WRITE' | 'MANAGE';
+
+export const MEMBER_TYPE_LABEL: Record<MemberType, string> = {
+  MEMBER: '일반 회원',
+  BUSINESS: '기업 회원',
+  ADMIN_USER: '관리자',
+  ADMIN_MASTER: '마스터 관리자',
+  ADMIN_DEVELOPER: '개발자 관리자',
+};
+
+export const MEMBER_STATUS_LABEL: Record<MemberStatus, string> = {
+  ACTIVE: '활성',
+  INACTIVE: '비활성',
+  SUSPENDED: '정지',
+  WITHDRAWN: '탈퇴',
+};
+
+export interface RoleInfo {
+  id: string;
+  name: string;
+  displayName: string;
+}
+
+export interface PermissionInfo {
+  id: string;
+  name: string;
+  displayName: string;
+}
+
+/** GET /api/v1/admin/admins/search 및 /api/v1/admin/users/search 공통 응답 */
+export interface MemberSearchItem {
+  memberId: string;
+  loginId: string;
+  email: string;
+  memberName: string;
+  phoneNumber: string;
+  businessNumber?: string;
+  memberType: MemberType;
+  status: MemberStatus;
+  createdAt: string;
+}
+
+/** GET /api/v1/admin/members/{memberId} 응답 */
+export interface AdminMemberDetailFull {
+  memberId: string;
+  loginId: string;
+  email: string;
+  phoneNumber: string;
+  memberName: string;
+  memberType: MemberType;
+  status: MemberStatus;
+  businessNumber?: string;
+  role: RoleInfo;
+  permissions: PermissionInfo[];
+  emailVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /api/v1/admin/members/{memberId}/status-history 응답 */
+export interface MemberStatusHistoryItem {
+  id: string;
+  previousStatus: MemberStatus;
+  newStatus: MemberStatus;
+  reason: string;
+  changedBy: string;
+  createdAt: string;
+}
+
+export interface SuspendMemberRequest {
+  reason: string;
+}
+
+export interface UnsuspendMemberRequest {
+  reason: string;
+}
+
+export interface CreateAdminMemberRequest {
+  loginId: string;
+  password: string;
+  email: string;
+  phoneNumber: string;
+  memberType: 'ADMIN_USER' | 'ADMIN_MASTER' | 'ADMIN_DEVELOPER';
+  memberName: string;
+}
+
+export interface AdminCreatedMember {
+  memberId: string;
+  loginId: string;
+  email: string;
+  memberType: MemberType;
+}
+
+export interface MemberSearchParams {
+  keyword?: string;
+  status?: MemberStatus;
+  type?: MemberType;
+  businessNumber?: string;
+  createdFrom?: string;
+  createdTo?: string;
+  page?: number;
+  size?: number;
+}
 
 const ADMIN_TYPES: ReadonlySet<MemberType> = new Set([
   'ADMIN_USER',
@@ -146,10 +248,38 @@ export const AdminMemberService = {
       ),
   detail: (memberId: string) =>
     unwrap<AdminMemberDetail>(api.get(`/api/v1/admin/members/${memberId}`)),
-  deactivate: (memberId: string) =>
-    unwrap<null>(api.post(`/api/v1/admin/members/${memberId}/deactivate`)),
-  reactivate: (memberId: string) =>
-    unwrap<null>(api.post(`/api/v1/admin/members/${memberId}/reactivate`)),
+
+  /** GET /api/v1/admin/admins/search — 어드민 회원 조건 검색 (페이징) */
+  searchAdmins: (params: MemberSearchParams = {}): Promise<PageResult<MemberSearchItem>> =>
+    api
+      .get<ApiResponse<BackendPage<MemberSearchItem>>>('/api/v1/admin/admins/search', { params })
+      .then((res) => toPageResult(res.data.data)),
+
+  /** GET /api/v1/admin/users/search — 일반 회원 조건 검색 (페이징) */
+  searchUsers: (params: MemberSearchParams = {}): Promise<PageResult<MemberSearchItem>> =>
+    api
+      .get<ApiResponse<BackendPage<MemberSearchItem>>>('/api/v1/admin/users/search', { params })
+      .then((res) => toPageResult(res.data.data)),
+
+  /** GET /api/v1/admin/members/{memberId} — 회원 상세 (역할/권한 포함) */
+  fullDetail: (memberId: string): Promise<AdminMemberDetailFull> =>
+    unwrap<AdminMemberDetailFull>(api.get(`/api/v1/admin/members/${memberId}`)),
+
+  /** GET /api/v1/admin/members/{memberId}/status-history — 상태 변경 이력 */
+  statusHistory: (memberId: string): Promise<MemberStatusHistoryItem[]> =>
+    unwrap<MemberStatusHistoryItem[]>(api.get(`/api/v1/admin/members/${memberId}/status-history`)),
+
+  /** PUT /api/v1/admin/members/{memberId}/suspend — 회원 정지 */
+  suspend: (memberId: string, data: SuspendMemberRequest): Promise<null> =>
+    unwrap<null>(api.put(`/api/v1/admin/members/${memberId}/suspend`, data)),
+
+  /** PUT /api/v1/admin/members/{memberId}/unsuspend — 회원 정지 해제 */
+  unsuspend: (memberId: string, data: UnsuspendMemberRequest): Promise<null> =>
+    unwrap<null>(api.put(`/api/v1/admin/members/${memberId}/unsuspend`, data)),
+
+  /** POST /api/v1/admin/members — 어드민 멤버 생성 */
+  createAdmin: (data: CreateAdminMemberRequest): Promise<AdminCreatedMember> =>
+    unwrap<AdminCreatedMember>(api.post('/api/v1/admin/members', data)),
 };
 
 export { derivePermissions };

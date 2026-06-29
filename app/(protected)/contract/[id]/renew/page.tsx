@@ -4,7 +4,7 @@ import { use, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ContractService } from '@/lib/api/contract';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 interface Params {
   id: string;
@@ -23,8 +23,7 @@ export default function ContractRenewPage({ params }: { params: Promise<Params> 
       const created = await ContractService.renew(id);
       router.replace(`/contract/${created.id}`);
     } catch (e) {
-      const res = (e as { response?: { data?: { code?: string; message?: string } } }).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '갱신에 실패했습니다.'));
+      setError(extractApiError(e, '갱신에 실패했습니다.'));
     } finally {
       setSubmitting(false);
     }

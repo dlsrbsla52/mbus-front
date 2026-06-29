@@ -8,7 +8,7 @@ import {
   type RoleDetail,
   type RoleSummary,
 } from '@/lib/api/admin/authorization';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 export default function RolePermissionTemplatePanel() {
   const [roles, setRoles] = useState<RoleSummary[]>([]);
@@ -31,8 +31,7 @@ export default function RolePermissionTemplatePanel() {
       setAllPermissions(p);
       if (r.length > 0) setSelectedRoleId((prev) => prev ?? r[0].id);
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '역할 정보를 불러오지 못했습니다.'));
+      setError(extractApiError(e, '역할 정보를 불러오지 못했습니다.'));
     } finally {
       setLoading(false);
     }
@@ -43,8 +42,7 @@ export default function RolePermissionTemplatePanel() {
     try {
       setRoleDetail(await AuthorizationService.getRole(roleId));
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '역할 상세를 불러오지 못했습니다.'));
+      setError(extractApiError(e, '역할 상세를 불러오지 못했습니다.'));
     } finally {
       setDetailLoading(false);
     }
@@ -60,8 +58,7 @@ export default function RolePermissionTemplatePanel() {
       await AuthorizationService.assignPermissionToRole(selectedRoleId, { permissionName });
       await loadDetail(selectedRoleId);
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '권한 부여에 실패했습니다.'));
+      setError(extractApiError(e, '권한 부여에 실패했습니다.'));
     }
   };
 
@@ -73,8 +70,7 @@ export default function RolePermissionTemplatePanel() {
       await AuthorizationService.removePermissionFromRole(selectedRoleId, permissionName);
       await loadDetail(selectedRoleId);
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '권한 해제에 실패했습니다.'));
+      setError(extractApiError(e, '권한 해제에 실패했습니다.'));
     }
   };
 
@@ -182,8 +178,6 @@ export default function RolePermissionTemplatePanel() {
     </div>
   );
 }
-
-type ErrRes = { response?: { data?: { code?: string; message?: string } } };
 
 function ErrorBox({ message }: { message: string }) {
   return (

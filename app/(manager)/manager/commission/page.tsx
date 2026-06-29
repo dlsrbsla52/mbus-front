@@ -11,7 +11,7 @@ import {
   type ManagerCommissionResponse,
 } from '@/lib/api/admin/commission';
 import { AdminMemberService, type AdminMemberRow } from '@/lib/api/member';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 export default function CommissionPage() {
   return (
@@ -53,8 +53,7 @@ function ManagerCommissionPanel() {
       const result = await AdminMemberService.list({ keyword: kw.trim(), size: 20 });
       setSearchResults(result.content);
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '멤버 검색에 실패했습니다.'));
+      setError(extractApiError(e, '멤버 검색에 실패했습니다.'));
     } finally { setSearching(false); }
   }, []);
 
@@ -78,8 +77,7 @@ function ManagerCommissionPanel() {
       setNewRate(String(c.commissionRate));
       setHistory(h);
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '정산 비율 정보를 불러오지 못했습니다.'));
+      setError(extractApiError(e, '정산 비율 정보를 불러오지 못했습니다.'));
     } finally { setCommissionLoading(false); }
   }, []);
 
@@ -112,8 +110,7 @@ function ManagerCommissionPanel() {
       setReason('');
       setSuccess('정산 비율이 저장되었습니다.');
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '정산 비율 저장에 실패했습니다.'));
+      setError(extractApiError(e, '정산 비율 저장에 실패했습니다.'));
     } finally { setSaving(false); }
   };
 
@@ -318,8 +315,7 @@ function ContractOverridePanel() {
       }
       setQueried(true);
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '계약 정보를 불러오지 못했습니다.'));
+      setError(extractApiError(e, '계약 정보를 불러오지 못했습니다.'));
     } finally { setLoading(false); }
   };
 
@@ -344,8 +340,7 @@ function ContractOverridePanel() {
       setReason('');
       await onSearch();
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '오버라이드 저장에 실패했습니다.'));
+      setError(extractApiError(e, '오버라이드 저장에 실패했습니다.'));
     } finally { setSaving(false); }
   };
 
@@ -502,8 +497,6 @@ function HistoryList({ items, loading }: { items: CommissionRateHistoryResponse[
     </ul>
   );
 }
-
-type ErrRes = { response?: { data?: { code?: string; message?: string } } };
 
 function ErrorBox({ message }: { message: string }) {
   return (

@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AuthService } from '@/lib/api/auth';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 type VerifyState =
   | { kind: 'idle' }
@@ -24,10 +24,9 @@ function VerifyEmailInner() {
     AuthService.verifyEmail(token)
       .then(() => setState({ kind: 'success' }))
       .catch((e) => {
-        const res = (e as { response?: { data?: { code?: string; message?: string } } }).response?.data;
         setState({
           kind: 'error',
-          message: messageForCode(res?.code ?? '', res?.message ?? '인증에 실패했습니다.'),
+          message: extractApiError(e, '인증에 실패했습니다.'),
         });
       });
   }, [token]);

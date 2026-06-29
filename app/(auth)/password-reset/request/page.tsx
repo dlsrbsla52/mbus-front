@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { AuthService } from '@/lib/api/auth';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 const schema = z.object({
   email: z.string().email('올바른 이메일 형식이 아닙니다.'),
@@ -29,8 +29,7 @@ export default function PasswordResetRequestPage() {
       await AuthService.passwordReset.request(data);
       setSent(true);
     } catch (e) {
-      const res = (e as { response?: { data?: { code?: string; message?: string } } }).response?.data;
-      setServerError(messageForCode(res?.code ?? '', res?.message ?? '메일 발송에 실패했습니다.'));
+      setServerError(extractApiError(e, '메일 발송에 실패했습니다.'));
     }
   };
 

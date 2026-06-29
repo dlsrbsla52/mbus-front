@@ -17,6 +17,7 @@ export const RESULT_CODES = {
   AUTH_ACCOUNT_DEACTIVATED: '00306',
 
   VALIDATION_FAIL: '00400',
+  VALIDATION_FAIL_FIELD: '00260',
   FORBIDDEN: '00403',
   NOT_FOUND: '00404',
 
@@ -58,3 +59,42 @@ export const messageForCode = (code: string, fallback: string): string =>
   RESULT_CODE_MESSAGES[code] ?? fallback;
 
 export const isSuccess = (code: string): boolean => code === RESULT_CODES.SUCCESS;
+
+interface FieldError {
+  field: string;
+  message: string;
+}
+
+type AxiosLikeError = {
+  response?: {
+    data?: {
+      code?: string;
+      message?: string;
+      data?: unknown;
+      errors?: unknown;
+    };
+  };
+};
+
+/**
+ * axios 에러에서 사용자에게 보여줄 메시지를 추출한다.
+ * 서버가 `errors` 또는 `data` 필드에 FieldErrorDetail[] 를 담아 보내는 경우(code 00260 등)
+ * 필드별 메시지를 줄 구분하여 반환하고, 없으면 code → message → fallback 순으로 반환한다.
+ */
+export const extractApiError = (e: unknown, fallback: string): string => {
+  const res = (e as AxiosLikeError).response?.data;
+  if (!res) return fallback;
+
+  const fieldErrors = Array.isArray(res.errors)
+    ? (res.errors as FieldError[])
+    : Array.isArray(res.data)
+      ? (res.data as FieldError[])
+      : [];
+
+  if (fieldErrors.length > 0) {
+    const messages = fieldErrors.map((fe) => fe.message).filter(Boolean);
+    if (messages.length > 0) return messages.join('\n');
+  }
+
+  return messageForCode(res.code ?? '', res.message ?? fallback);
+};

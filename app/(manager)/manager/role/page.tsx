@@ -10,7 +10,7 @@ import {
   type RoleSummary,
 } from '@/lib/api/admin/authorization';
 import { AdminMemberService, type AdminMemberRow } from '@/lib/api/member';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 export default function ManagerRolePage() {
   return (
@@ -71,8 +71,7 @@ function MemberRolePanel() {
       const result = await AdminMemberService.list({ keyword: kw.trim(), size: 20 });
       setSearchResults(result.content);
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '멤버 검색에 실패했습니다.'));
+      setError(extractApiError(e, '멤버 검색에 실패했습니다.'));
     } finally { setSearching(false); }
   }, []);
 
@@ -97,8 +96,7 @@ function MemberRolePanel() {
       setSelectedRoleName(summary.role?.name ?? '');
       setCurrentPermissions(summary.permissions ?? []);
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '역할 정보를 불러오지 못했습니다.'));
+      setError(extractApiError(e, '역할 정보를 불러오지 못했습니다.'));
     } finally { setRoleLoading(false); }
   };
 
@@ -113,8 +111,7 @@ function MemberRolePanel() {
       setCurrentPermissions(summary.permissions ?? []);
       setSuccess('역할이 저장되었습니다.');
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '역할 저장에 실패했습니다.'));
+      setError(extractApiError(e, '역할 저장에 실패했습니다.'));
     } finally { setSaving(false); }
   };
 
@@ -275,8 +272,6 @@ function MemberRolePanel() {
 }
 
 // ─── 공통 ────────────────────────────────────────────────────────────────────
-
-type ErrRes = { response?: { data?: { code?: string; message?: string } } };
 
 function PanelIntro({
   eyebrow,

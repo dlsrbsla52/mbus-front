@@ -14,11 +14,9 @@ import {
 } from '@/lib/api/admin/reservation';
 import { AdminMemberService, type AdminMemberRow } from '@/lib/api/member';
 import { RESERVATION_STATUS_LABEL, type ReservationStatus } from '@/lib/api/reservation';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 import { toApiOffsetDateTime } from '@/lib/api/date-serializer';
 import type { PageResult } from '@/lib/api/types';
-
-type ErrRes = { response?: { data?: { code?: string; message?: string } } };
 
 const STATUS_BADGE: Record<ReservationStatus, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -83,8 +81,7 @@ export default function ManagerReservationPage() {
       });
       setResult(data);
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '예약 목록을 불러오지 못했습니다.'));
+      setError(extractApiError(e, '예약 목록을 불러오지 못했습니다.'));
     } finally {
       setLoading(false);
     }
@@ -290,8 +287,7 @@ function ReservationDetailModal({
           .catch(() => {});
       }
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '예약 상세를 불러오지 못했습니다.'));
+      setError(extractApiError(e, '예약 상세를 불러오지 못했습니다.'));
     } finally {
       setLoading(false);
     }
@@ -468,8 +464,7 @@ function StatusUpdatePanel({
       });
       onDone();
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '상태 변경에 실패했습니다.'));
+      setError(extractApiError(e, '상태 변경에 실패했습니다.'));
     } finally {
       setSaving(false);
     }
@@ -574,8 +569,7 @@ function AssignPanel({
       await AdminReservationService.assign(reservationId, { assigneeId: selected.id });
       onDone();
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '담당자 배정에 실패했습니다.'));
+      setError(extractApiError(e, '담당자 배정에 실패했습니다.'));
     } finally {
       setSaving(false);
     }
@@ -710,8 +704,7 @@ function CompleteToContractPanel({
       });
       onDone();
     } catch (e) {
-      const res = (e as ErrRes).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '계약 생성에 실패했습니다.'));
+      setError(extractApiError(e, '계약 생성에 실패했습니다.'));
     } finally {
       setSaving(false);
     }

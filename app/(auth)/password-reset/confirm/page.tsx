@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { AuthService } from '@/lib/api/auth';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 const schema = z
   .object({
@@ -52,8 +52,7 @@ function PasswordResetConfirmInner() {
       setDone(true);
       setTimeout(() => router.replace('/login'), 1500);
     } catch (e) {
-      const res = (e as { response?: { data?: { code?: string; message?: string } } }).response?.data;
-      setServerError(messageForCode(res?.code ?? '', res?.message ?? '재설정에 실패했습니다.'));
+      setServerError(extractApiError(e, '재설정에 실패했습니다.'));
     }
   };
 

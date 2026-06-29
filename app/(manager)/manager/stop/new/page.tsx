@@ -10,7 +10,7 @@ import { Database, MapPin } from 'lucide-react';
 import PageHeader from '@/components/common/PageHeader';
 import FormField, { TextInput } from '@/components/common/FormField';
 import { StopService } from '@/lib/api/stop';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 const schema = z.object({
   arsId: z.string().min(1, 'ARS ID 를 입력하세요.'),
@@ -104,8 +104,7 @@ function SingleForm({ onCreated }: { onCreated: () => void }) {
       await StopService.createSimple(data);
       onCreated();
     } catch (e) {
-      const res = (e as { response?: { data?: { code?: string; message?: string } } }).response?.data;
-      setServerError(messageForCode(res?.code ?? '', res?.message ?? '등록에 실패했습니다.'));
+      setServerError(extractApiError(e, '등록에 실패했습니다.'));
     }
   };
 
@@ -196,10 +195,9 @@ function BulkPanel() {
       await StopService.registerBulk();
       setResult({ ok: true });
     } catch (e) {
-      const res = (e as { response?: { data?: { code?: string; message?: string } } }).response?.data;
       setResult({
         ok: false,
-        message: messageForCode(res?.code ?? '', res?.message ?? '대량 등록에 실패했습니다.'),
+        message: extractApiError(e, '대량 등록에 실패했습니다.'),
       });
     } finally {
       setRunning(false);

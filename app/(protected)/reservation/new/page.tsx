@@ -8,7 +8,7 @@ import Pagination from '@/components/common/Pagination';
 import { StopService, type Stop } from '@/lib/api/stop';
 import { ReservationService } from '@/lib/api/reservation';
 import { toApiOffsetDateTime, toApiLocalDate } from '@/lib/api/date-serializer';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 import type { PageResult } from '@/lib/api/types';
 
 const STEPS = [
@@ -80,8 +80,7 @@ export default function ReservationNewPage() {
       });
       router.replace('/reservation');
     } catch (e) {
-      const res = (e as { response?: { data?: { code?: string; message?: string } } }).response?.data;
-      setSubmitError(messageForCode(res?.code ?? '', res?.message ?? '예약 생성에 실패했습니다.'));
+      setSubmitError(extractApiError(e, '예약 생성에 실패했습니다.'));
     } finally {
       setSubmitting(false);
     }

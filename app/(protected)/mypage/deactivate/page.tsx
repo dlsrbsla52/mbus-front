@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MemberService } from '@/lib/api/member';
 import { useAuthStore } from '@/store/useAuthStore';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 export default function DeactivatePage() {
   const router = useRouter();
@@ -26,8 +26,7 @@ export default function DeactivatePage() {
       logout();
       router.replace('/');
     } catch (e) {
-      const res = (e as { response?: { data?: { code?: string; message?: string } } }).response?.data;
-      setError(messageForCode(res?.code ?? '', res?.message ?? '비활성화에 실패했습니다.'));
+      setError(extractApiError(e, '비활성화에 실패했습니다.'));
     } finally {
       setSubmitting(false);
     }

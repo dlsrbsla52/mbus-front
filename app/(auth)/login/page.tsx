@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AuthService } from '@/lib/api/auth';
 import { useAuthStore } from '@/store/useAuthStore';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 const loginSchema = z.object({
   loginId: z.string().min(4, '아이디는 최소 4자 이상이어야 합니다.'),
@@ -41,11 +41,7 @@ function LoginInner() {
       const next = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
       router.push(next);
     } catch (error) {
-      const data = (error as { response?: { data?: { code?: string; message?: string } } })
-        ?.response?.data;
-      const fallback =
-        data?.message ?? '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.';
-      setServerError(data?.code ? messageForCode(data.code, fallback) : fallback);
+      setServerError(extractApiError(error, '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.'));
     }
   };
 

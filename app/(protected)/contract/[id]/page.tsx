@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ContractService, type Contract } from '@/lib/api/contract';
-import { messageForCode } from '@/lib/api/result-codes';
+import { extractApiError } from '@/lib/api/result-codes';
 
 interface Params {
   id: string;
@@ -19,8 +19,7 @@ export default function ContractDetailPage({ params }: { params: Promise<Params>
     ContractService.detail(id)
       .then(setContract)
       .catch((e) => {
-        const res = (e as { response?: { data?: { code?: string; message?: string } } }).response?.data;
-        setError(messageForCode(res?.code ?? '', res?.message ?? '계약을 불러오지 못했습니다.'));
+        setError(extractApiError(e, '계약을 불러오지 못했습니다.'));
       })
       .finally(() => setLoading(false));
   }, [id]);
