@@ -24,6 +24,28 @@ import type { PageResult } from '@/lib/api/types';
 
 type Tab = 'admin' | 'user';
 
+/** 검색 버튼으로 확정된 조회 조건. 입력 중인 값과 분리해서 보관한다. */
+type AppliedFilters = {
+  keyword: string;
+  status: string;
+  type: string;
+  businessNumber: string;
+  createdFrom: string;
+  createdTo: string;
+};
+
+const EMPTY_FILTERS: AppliedFilters = {
+  keyword: '',
+  status: '',
+  type: '',
+  businessNumber: '',
+  createdFrom: '',
+  createdTo: '',
+};
+
+const hasAnyFilter = (f: AppliedFilters) =>
+  !!(f.keyword || f.status || f.type || f.businessNumber || f.createdFrom || f.createdTo);
+
 // ─── 상수 ──────────────────────────────────────────────────────────────────────
 
 const ADMIN_TYPES: MemberType[] = ['ADMIN_USER', 'ADMIN_MASTER', 'ADMIN_DEVELOPER'];
@@ -74,6 +96,7 @@ export default function ManagerMemberPage() {
   const [businessNumber, setBusinessNumber] = useState('');
   const [createdFrom, setCreatedFrom] = useState('');
   const [createdTo, setCreatedTo] = useState('');
+  const [applied, setApplied] = useState<AppliedFilters>(EMPTY_FILTERS);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [result, setResult] = useState<PageResult<MemberSearchItem> | null>(null);
@@ -89,12 +112,12 @@ export default function ManagerMemberPage() {
       const params = {
         page,
         size: pageSize,
-        ...(keyword.trim() ? { keyword: keyword.trim() } : {}),
-        ...(statusFilter ? { status: statusFilter as MemberStatus } : {}),
-        ...(typeFilter ? { type: typeFilter as MemberType } : {}),
-        ...(tab === 'user' && businessNumber.trim() ? { businessNumber: businessNumber.trim() } : {}),
-        ...(createdFrom ? { createdFrom } : {}),
-        ...(createdTo ? { createdTo } : {}),
+        ...(applied.keyword ? { keyword: applied.keyword } : {}),
+        ...(applied.status ? { status: applied.status as MemberStatus } : {}),
+        ...(applied.type ? { type: applied.type as MemberType } : {}),
+        ...(tab === 'user' && applied.businessNumber ? { businessNumber: applied.businessNumber } : {}),
+        ...(applied.createdFrom ? { createdFrom: applied.createdFrom } : {}),
+        ...(applied.createdTo ? { createdTo: applied.createdTo } : {}),
       };
       const data =
         tab === 'admin'
@@ -106,39 +129,54 @@ export default function ManagerMemberPage() {
     } finally {
       setLoading(false);
     }
-  }, [tab, page, pageSize, keyword, statusFilter, typeFilter, businessNumber, createdFrom, createdTo]);
+  }, [tab, page, pageSize, applied]);
 
   useEffect(() => { load(); }, [load]);
 
-  const onTabChange = (next: Tab) => {
-    setTab(next);
+  /** 입력 중인 값을 조회 조건으로 확정. 항상 새 객체라 동일 조건 재검색도 재요청된다. */
+  const applyDraft = () => {
+    setApplied({
+      keyword: keyword.trim(),
+      status: statusFilter,
+      type: typeFilter,
+      businessNumber: businessNumber.trim(),
+      createdFrom,
+      createdTo,
+    });
     setPage(0);
+  };
+
+  const clearDraft = () => {
     setKeyword('');
     setStatusFilter('');
     setTypeFilter('');
     setBusinessNumber('');
     setCreatedFrom('');
     setCreatedTo('');
+  };
+
+  const onTabChange = (next: Tab) => {
+    setTab(next);
+    setPage(0);
+    clearDraft();
+    setApplied(EMPTY_FILTERS);
     setResult(null);
   };
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setPage(0);
+    applyDraft();
   };
 
   const onReset = () => {
-    setKeyword('');
-    setStatusFilter('');
-    setTypeFilter('');
-    setBusinessNumber('');
-    setCreatedFrom('');
-    setCreatedTo('');
+    clearDraft();
+    setApplied(EMPTY_FILTERS);
     setPage(0);
   };
 
   const typeOptions = tab === 'admin' ? ADMIN_TYPES : USER_TYPES;
-  const hasFilter = !!(keyword || statusFilter || typeFilter || businessNumber || createdFrom || createdTo);
+  const hasDraft = !!(keyword || statusFilter || typeFilter || businessNumber || createdFrom || createdTo);
+  const hasFilter = hasAnyFilter(applied);
 
   const columns: DataTableColumn<MemberSearchItem>[] = [
     {
@@ -289,7 +327,7 @@ export default function ManagerMemberPage() {
           >
             검색
           </button>
-          {hasFilter && (
+          {(hasDraft || hasFilter) && (
             <button
               type="button"
               onClick={onReset}
