@@ -9,6 +9,10 @@ import Link from 'next/link';
 import { AuthService } from '@/lib/api/auth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { extractApiError } from '@/lib/api/result-codes';
+import { loginPathFor } from '@/lib/auth/site';
+
+/** 백엔드 AuthResult.ADMIN_SITE_LOGIN_REQUIRED — 관리자 계정은 관리자 사이트에서만 로그인한다. */
+const ADMIN_SITE_LOGIN_REQUIRED = 'A0019';
 
 const loginSchema = z.object({
   loginId: z.string().min(4, '아이디는 최소 4자 이상이어야 합니다.'),
@@ -23,6 +27,8 @@ function LoginInner() {
   const setTokens = useAuthStore((state) => state.setTokens);
 
   const [serverError, setServerError] = useState('');
+  // 관리자 계정이 일반 로그인을 시도한 경우(A0019) 관리자 로그인으로 안내한다.
+  const [showAdminLoginLink, setShowAdminLoginLink] = useState(false);
 
   const {
     register,
@@ -35,12 +41,15 @@ function LoginInner() {
   const onSubmit = async (data: LoginForm) => {
     try {
       setServerError('');
+      setShowAdminLoginLink(false);
       const response = await AuthService.login(data);
-      setTokens(response.accessToken);
+      setTokens(response.accessToken, 'user');
       const rawNext = searchParams.get('next');
       const next = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
       router.push(next);
     } catch (error) {
+      const code = (error as { response?: { data?: { code?: string } } }).response?.data?.code;
+      setShowAdminLoginLink(code === ADMIN_SITE_LOGIN_REQUIRED);
       setServerError(extractApiError(error, '로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.'));
     }
   };
@@ -66,6 +75,11 @@ function LoginInner() {
             {serverError && (
               <div className="p-3 bg-red-50 text-red-600 text-sm font-bold rounded-lg border border-red-100">
                 {serverError}
+                {showAdminLoginLink && (
+                  <Link href={loginPathFor('admin')} className="mt-2 block underline">
+                    관리자 로그인으로 이동
+                  </Link>
+                )}
               </div>
             )}
 

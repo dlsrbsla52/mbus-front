@@ -13,7 +13,7 @@ export default function MyPage() {
 
   const handleLogout = async () => {
     try {
-      await AuthService.logout();
+      await AuthService.logoutCurrent();
     } finally {
       logout();
       router.replace('/login');

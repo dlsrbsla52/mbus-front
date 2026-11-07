@@ -8,6 +8,7 @@ import Sidebar from './Sidebar';
 import { useAuthStore } from '@/store/useAuthStore';
 import { AuthService } from '@/lib/api/auth';
 import { useRouter } from 'next/navigation';
+import { loginPathFor } from '@/lib/auth/site';
 
 export default function ManagerShell({ children }: { children: React.ReactNode }) {
   return (
@@ -25,12 +26,13 @@ function ManagerLayout({ children }: { children: React.ReactNode }) {
 
   const onLogout = async () => {
     try {
-      await AuthService.logout();
+      // 토큰을 발급한 사이트의 세션만 정리한다(같은 브라우저의 다른 사이트 세션은 유지).
+      await AuthService.logoutCurrent();
     } catch {
       /* ignore */
     } finally {
       logout();
-      router.replace('/login');
+      router.replace(loginPathFor('admin'));
     }
   };
 

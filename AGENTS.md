@@ -42,7 +42,8 @@ npx tsc --noEmit --incremental false
 - `@/*`는 프로젝트 루트를 가리킨다.
 - accessToken은 `localStorage`나 `sessionStorage`에 저장하지 않는다.
 - refresh token은 HttpOnly cookie를 전제로 한다.
-- refresh endpoint는 `POST /api/v1/auth/token/refresh`이다.
+- 인증 API는 사이트별로 나뉜다(`lib/auth/site.ts`의 `AUTH_PATHS`). 일반 사이트는 `/api/v1/auth/{login,token/refresh,logout}`, 관리자 사이트(`/manager` 경로 또는 `NEXT_PUBLIC_ADMIN_HOST`)는 `/api/v1/auth/admin/{login,token/refresh,logout}`이다. 관리자 계정은 일반 로그인을 할 수 없고, `/api/v1/admin/**`는 관리자 사이트 토큰으로만 호출된다.
+- 관리자 화면에서 서비스 공개 API(`/api/v1/stop/**` 등)를 직접 호출하지 않는다. 필요한 기능은 백엔드 iam의 `/api/v1/admin/**` API를 쓴다.
 - axios client는 cookie 전송을 위해 `withCredentials: true`를 사용한다.
 - API 응답은 `ApiResponse<T> = { code, message, data }` 형태다.
 - 성공 코드는 `"00000"`이다.
@@ -59,16 +60,17 @@ App Router route group 이름은 URL에 포함되지 않는다.
 - `app/(auth)/{login,join}`: 공개 페이지 (`/login`, `/join`)
 - `app/(protected)/...`: 로그인 사용자 영역. `(protected)/layout.tsx`가 `ProtectedShell`로 감싼다.
 - `app/(manager)/manager/...`: 관리자 영역. `(manager)/layout.tsx`가 `ManagerShell`로 감싼다.
+- `app/(manager-auth)/manager/login`: 관리자 로그인 (`/manager/login`). `ManagerShell` 가드를 피하려고 별도 route group에 둔다.
 - `app/verify-email`, `app/403`: auth guard redirect target
 
 ## 인증 흐름
 
 1. `components/auth/AuthGate.tsx`가 root layout에서 mount된다.
-2. 메모리에 `accessToken`이 없으면 `AuthService.refresh()`로 silent refresh를 시도한다.
+2. 메모리에 `accessToken`이 없으면 `AuthService.refreshFor(currentAuthSite())`로 현재 사이트의 refresh 쿠키를 써서 silent refresh를 시도한다.
 3. refresh 성공 후 `MemberService.getMe()`로 사용자 정보를 로드한다.
 4. bootstrap이 끝나면 `isBootstrapped=true`가 된다. route guard는 이 값을 기다린다.
 5. `lib/api/client.ts` request interceptor가 현재 accessToken을 `Authorization: Bearer <token>`으로 붙인다.
-6. response interceptor는 401을 받으면 token refresh 후 원요청을 재시도한다. refresh 중 들어온 요청은 `failedQueue`에 대기시킨다.
+6. response interceptor는 401을 받으면 현재 사이트의 refresh 경로로 token refresh 후 원요청을 재시도한다. refresh 중 들어온 요청은 `failedQueue`에 대기시킨다.
 7. login/register/logout/refresh 계열 요청은 401이어도 refresh를 재시도하지 않는다.
 
 ## 권한 모델

@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useRequireAuth, type RequireAuthOptions } from '@/hooks/useRequireAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { MemberService } from '@/lib/api/member';
 import { AuthService } from '@/lib/api/auth';
+import { authSiteOfPath, loginPathFor, siteOfToken } from '@/lib/auth/site';
 
 interface ProtectedShellProps extends RequireAuthOptions {
   children: React.ReactNode;
@@ -41,6 +42,7 @@ export default function ProtectedShell({
 
 function UserFetchErrorView({ detail }: { detail: string }) {
   const router = useRouter();
+  const pathSite = authSiteOfPath(usePathname());
   const setUser = useAuthStore((s) => s.setUser);
   const setUserFetchError = useAuthStore((s) => s.setUserFetchError);
   const logout = useAuthStore((s) => s.logout);
@@ -67,13 +69,15 @@ function UserFetchErrorView({ detail }: { detail: string }) {
   };
 
   const onLogout = async () => {
+    // 로그아웃 API는 토큰 기준, 이동할 로그인 화면은 현재 영역 기준으로 고른다.
+    const tokenSite = useAuthStore.getState().tokenSite;
     try {
-      await AuthService.logout();
+      await AuthService.logoutFor(siteOfToken(tokenSite));
     } catch {
       /* ignore */
     } finally {
       logout();
-      router.replace('/login');
+      router.replace(loginPathFor(pathSite));
     }
   };
 
@@ -82,7 +86,7 @@ function UserFetchErrorView({ detail }: { detail: string }) {
       <div className="max-w-md rounded-lg border border-danger/30 bg-danger-soft p-6 text-sm text-brand-gray-700">
         <p className="text-base font-bold text-danger">회원 정보를 불러올 수 없습니다.</p>
         <p className="mt-2">
-          로그인 토큰은 있으나 <code className="rounded bg-white px-1 py-0.5 font-mono text-xs">/api/v1/member/find/me</code> 호출이 실패했습니다.
+          로그인 토큰은 있으나 <code className="rounded bg-white px-1 py-0.5 font-mono text-xs">/api/v1/member/me</code> 호출이 실패했습니다.
           백엔드 iam 서비스 상태 또는 게이트웨이 라우팅을 확인해 주세요.
         </p>
         <pre className="mt-3 overflow-auto rounded bg-white p-2 text-[11px] font-mono text-brand-gray-700">

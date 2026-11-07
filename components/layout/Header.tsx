@@ -28,7 +28,7 @@ const Header = () => {
   const handleLogout = async () => {
     setIsMenuOpen(false);
     try {
-      await AuthService.logout();
+      await AuthService.logoutCurrent();
     } catch {
       /* 서버 로그아웃 실패해도 로컬 상태는 정리 */
     } finally {
