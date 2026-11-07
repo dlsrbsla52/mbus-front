@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { MemberService } from '@/lib/api/member';
 import { AuthService } from '@/lib/api/auth';
+import { currentAuthSite } from '@/lib/auth/site';
 
 function describeError(e: unknown): string {
   const err = e as {
@@ -39,8 +40,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       try {
         if (!useAuthStore.getState().accessToken) {
           try {
-            const { accessToken: newToken } = await AuthService.refresh();
-            setTokens(newToken);
+            // 관리자 화면은 관리자 refresh 쿠키로, 그 외는 일반 refresh 쿠키로 복원한다.
+            const site = currentAuthSite();
+            const { accessToken: newToken } = await AuthService.refreshFor(site);
+            setTokens(newToken, site);
           } catch (refreshError) {
             // 토큰 없고 refresh 도 실패 → 비로그인 상태로 부팅 종료
             console.debug('[AuthGate] silent refresh skipped:', describeError(refreshError));
@@ -54,7 +57,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           setUser(me);
         } catch (meError) {
           // 토큰은 살아 있지만 사용자 정보 조회 실패 — 토큰을 버리지 않고 에러만 기록한다.
-          // 백엔드 /api/v1/member/find/me 가 일시적으로 응답 안 할 때 무한 로그아웃 루프 방지.
+          // 백엔드 /api/v1/member/me 가 일시적으로 응답 안 할 때 무한 로그아웃 루프 방지.
           const detail = describeError(meError);
           console.error('[AuthGate] getMe failed during bootstrap:', detail);
           setUserFetchError(detail);

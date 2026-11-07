@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { MemberType, Permission } from '@/lib/api/member';
+import { authSiteOfPath, loginPathFor } from '@/lib/auth/site';
 
 export interface RequireAuthOptions {
   requirePermission?: Permission;
@@ -22,7 +23,9 @@ export function useRequireAuth(options: RequireAuthOptions = {}) {
     if (!isBootstrapped) return;
 
     if (!accessToken) {
-      router.replace(`/login?next=${encodeURIComponent(pathname ?? '/')}`);
+      // 관리자 영역은 관리자 로그인으로 보낸다 — 일반 로그인은 관리자 계정을 받지 않는다.
+      const loginPath = loginPathFor(authSiteOfPath(pathname));
+      router.replace(`${loginPath}?next=${encodeURIComponent(pathname ?? '/')}`);
       return;
     }
     if (!user) return;
