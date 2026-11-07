@@ -59,8 +59,18 @@ export const MANAGER_NAV: ManagerNavGroup[] = [
   {
     title: "정류장",
     items: [
-      { label: "정류장 관리", href: "/manager/stop", icon: "MapPin" },
-      { label: "단가 관리", href: "/manager/stop-price", icon: "CircleDollarSign" },
+      {
+        label: "정류장 관리",
+        href: "/manager/stop",
+        icon: "MapPin",
+        requireMemberType: ["ADMIN_MASTER", "ADMIN_DEVELOPER"],
+      },
+      {
+        label: "단가 관리",
+        href: "/manager/stop-price",
+        icon: "CircleDollarSign",
+        requireMemberType: ["ADMIN_MASTER", "ADMIN_DEVELOPER"],
+      },
     ],
   },
   {
