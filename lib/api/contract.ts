@@ -19,12 +19,6 @@ export interface Contract {
   createdAt: string;
 }
 
-export interface ContractCreateRequest {
-  stopId: string;
-  startDate: string;
-  endDate: string;
-}
-
 export interface ContractListParams {
   page?: number;
   size?: number;
@@ -44,9 +38,9 @@ export interface ContractPayRequest {
 const unwrap = <T>(p: Promise<{ data: ApiResponse<T> }>): Promise<T> =>
   p.then((res) => res.data.data);
 
+// 계약 생성은 관리자 기능이라 여기 없다. 공개 `POST /api/v1/contract` 는 백엔드에서 제거됐고,
+// 관리자 사이트가 `/api/v1/admin/**`(예약 완료 → 계약 생성 등)로 처리한다.
 export const ContractService = {
-  create: (data: ContractCreateRequest) =>
-    unwrap<Contract>(api.post('/api/v1/contract', data)),
   listMine: (params: ContractListParams = {}) =>
     api
       .get<ApiResponse<BackendPage<Contract>>>('/api/v1/contract/me', { params })

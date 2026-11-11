@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react';
 import {
   ReservationService,
   RESERVATION_STATUS_LABEL,
+  isHolding,
   type MyReservation,
 } from '@/lib/api/reservation';
 import type { PageResult } from '@/lib/api/types';
@@ -63,6 +64,11 @@ export default function ReservationListPage() {
               {r.desiredContractStartDate && (
                 <p className="text-xs text-brand-gray-500">
                   계약 시작 희망: {r.desiredContractStartDate}
+                </p>
+              )}
+              {isHolding(r.status) && r.holdExpiresAt && (
+                <p className="text-xs text-brand-gray-500">
+                  선점 만료: {new Date(r.holdExpiresAt).toLocaleString('ko-KR')}
                 </p>
               )}
             </div>

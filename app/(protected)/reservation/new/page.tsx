@@ -6,7 +6,10 @@ import { Search, X } from 'lucide-react';
 import DataTable, { type DataTableColumn } from '@/components/common/DataTable';
 import Pagination from '@/components/common/Pagination';
 import { StopService, type Stop } from '@/lib/api/stop';
-import { ReservationService } from '@/lib/api/reservation';
+import {
+  ReservationService,
+  type ReservationCreateResponse,
+} from '@/lib/api/reservation';
 import { toApiOffsetDateTime, toApiLocalDate } from '@/lib/api/date-serializer';
 import { extractApiError } from '@/lib/api/result-codes';
 import type { PageResult } from '@/lib/api/types';
@@ -37,6 +40,8 @@ export default function ReservationNewPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  // 일부 정류장만 예약된 경우의 정류장별 결과. 전부 성공하면 바로 목록으로 이동하므로 쓰지 않는다.
+  const [result, setResult] = useState<ReservationCreateResponse | null>(null);
 
   useEffect(() => {
     if (step !== 1) return;
@@ -73,18 +78,35 @@ export default function ReservationNewPage() {
     setSubmitting(true);
     setSubmitError('');
     try {
-      await ReservationService.create({
+      const res = await ReservationService.create({
         stopId: draft.stops.map((s) => s.id),
         consultationRequestedAt: toApiOffsetDateTime(draft.consultationDate),
         desiredContractStartDate: toApiLocalDate(draft.desiredContractStartDate),
       });
-      router.replace('/reservation');
+      // 정류장별로 따로 처리되어 일부만 성공할 수 있다. 실패가 있으면 HTTP 200 이어도 결과를 보여준다.
+      if (res.failureCount === 0) {
+        router.replace('/reservation');
+        return;
+      }
+      setResult(res);
     } catch (e) {
       setSubmitError(extractApiError(e, '예약 생성에 실패했습니다.'));
     } finally {
       setSubmitting(false);
     }
   };
+
+  // 실패한 정류장만 남기고 1단계로 돌아가 다른 정류장을 고르게 한다.
+  const onReselectFailed = () => {
+    if (!result) return;
+    const failedIds = new Set(result.results.filter((r) => !r.success).map((r) => r.stopId));
+    setDraft({ ...draft, stops: draft.stops.filter((s) => failedIds.has(s.id)) });
+    setResult(null);
+    setStep(1);
+  };
+
+  const stopNameOf = (stopId: string) =>
+    draft.stops.find((s) => s.id === stopId)?.name ?? stopId;
 
   const stopColumns: DataTableColumn<Stop>[] = [
     {
@@ -298,7 +320,66 @@ export default function ReservationNewPage() {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 3 && result && (
+          <div className="space-y-5">
+            <h2 className="text-lg font-bold text-brand-black">예약 결과</h2>
+            <p className="text-sm text-brand-gray-700">
+              {result.successCount > 0
+                ? `${result.results.length}개 중 ${result.successCount}개 정류장이 예약되었습니다.`
+                : '예약된 정류장이 없습니다.'}
+            </p>
+
+            <ul className="divide-y divide-brand-gray-100 rounded-md border border-brand-gray-200">
+              {result.results.map((r) => (
+                <li key={r.stopId} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
+                  <div>
+                    <p className="font-semibold text-brand-black">{stopNameOf(r.stopId)}</p>
+                    {!r.success && (
+                      <p className="mt-0.5 text-xs text-danger">
+                        {r.message ?? '예약하지 못했습니다.'}
+                      </p>
+                    )}
+                    {r.success && r.holdExpiresAt && (
+                      <p className="mt-0.5 text-xs text-brand-gray-500">
+                        선점 만료: {new Date(r.holdExpiresAt).toLocaleString('ko-KR')}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className={
+                      r.success
+                        ? 'shrink-0 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-bold text-green-700'
+                        : 'shrink-0 rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-bold text-danger'
+                    }
+                  >
+                    {r.success ? '예약 완료' : '실패'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={onReselectFailed}
+                className="rounded-md border border-brand-gray-300 px-4 py-2 text-sm font-semibold text-brand-gray-700 hover:bg-brand-gray-50"
+              >
+                정류장 다시 선택
+              </button>
+              {result.successCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => router.replace('/reservation')}
+                  className="rounded-md bg-brand-black px-4 py-2 text-sm font-semibold text-white hover:bg-brand-gray-800"
+                >
+                  내 예약 보기
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {step === 3 && !result && (
           <div className="space-y-5">
             <h2 className="text-lg font-bold text-brand-black">3. 예약 확인</h2>
 

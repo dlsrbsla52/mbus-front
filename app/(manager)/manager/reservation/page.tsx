@@ -13,7 +13,11 @@ import {
   type AdminReservationDetail,
 } from '@/lib/api/admin/reservation';
 import { AdminMemberService, type AdminMemberRow } from '@/lib/api/member';
-import { RESERVATION_STATUS_LABEL, type ReservationStatus } from '@/lib/api/reservation';
+import {
+  RESERVATION_STATUS_LABEL,
+  isHolding,
+  type ReservationStatus,
+} from '@/lib/api/reservation';
 import { extractApiError } from '@/lib/api/result-codes';
 import { toApiOffsetDateTime } from '@/lib/api/date-serializer';
 import type { PageResult } from '@/lib/api/types';
@@ -23,7 +27,15 @@ const STATUS_BADGE: Record<ReservationStatus, string> = {
   CONSULTING: 'bg-blue-100 text-brand-blue',
   COMPLETED: 'bg-green-100 text-green-700',
   CANCELLED: 'bg-brand-gray-100 text-brand-gray-500',
+  REJECTED: 'bg-danger-soft text-danger',
+  EXPIRED: 'bg-brand-gray-100 text-brand-gray-500',
 };
+
+// 관리자가 직접 고를 수 있는 상태(백엔드 전이 규칙 기준).
+// - EXPIRED 는 선점 기간이 지나면 시스템이 넣는다.
+// - CANCELLED 는 회원 본인 취소 전용이고, 관리자가 선점을 풀 때는 REJECTED(반려)를 쓴다.
+// - COMPLETED 는 '계약 생성'으로만 전환한다(계약과 한 트랜잭션).
+const SELECTABLE_STATUSES: ReservationStatus[] = ['CONSULTING', 'REJECTED'];
 
 function StatusBadge({ status }: { status: string }) {
   const cls = STATUS_BADGE[status as ReservationStatus] ?? 'bg-brand-gray-100 text-brand-gray-500';
@@ -257,7 +269,7 @@ export default function ManagerReservationPage() {
 
 // ─── 예약 상세 모달 ───────────────────────────────────────────────────────────
 
-type ActionPanel = 'status' | 'assign' | 'contract' | null;
+type ActionPanel = 'status' | 'assign' | 'hold' | 'contract' | null;
 
 function ReservationDetailModal({
   reservationId,
@@ -301,7 +313,8 @@ function ReservationDetailModal({
     onUpdated();
   };
 
-  const isDone = detail?.status === 'COMPLETED' || detail?.status === 'CANCELLED';
+  // 진행 중(선점 중)인 예약만 상태 변경·배정·연장·계약 생성이 가능하다.
+  const isDone = !detail || !isHolding(detail.status);
 
   return (
     <Modal open onClose={onClose} title="예약 상세" size="lg">
@@ -318,6 +331,10 @@ function ReservationDetailModal({
             <InfoRow label="상담 신청일" value={fmtDatetime(detail.consultationRequestedAt)} />
             <InfoRow label="계약 희망일" value={fmtDate(detail.desiredContractStartDate)} />
             <InfoRow label="등록일" value={fmtDatetime(detail.createdAt)} />
+            <InfoRow
+              label="선점 만료"
+              value={isHolding(detail.status) ? fmtDatetime(detail.holdExpiresAt ?? undefined) : '—'}
+            />
             <InfoRow
               label="담당자"
               value={
@@ -384,8 +401,22 @@ function ReservationDetailModal({
               </button>
               <button
                 type="button"
-                onClick={() => setActivePanel(activePanel === 'contract' ? null : 'contract')}
+                onClick={() => setActivePanel(activePanel === 'hold' ? null : 'hold')}
                 className={`rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors ${
+                  activePanel === 'hold'
+                    ? 'border-brand-black bg-brand-black text-white'
+                    : 'border-brand-gray-300 bg-white text-brand-gray-700 hover:bg-brand-gray-50'
+                }`}
+              >
+                선점 연장
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivePanel(activePanel === 'contract' ? null : 'contract')}
+                // 백엔드는 상담중(CONSULTING)인 예약만 완료·계약 전환을 허용한다.
+                disabled={detail.status !== 'CONSULTING'}
+                title={detail.status !== 'CONSULTING' ? '상담중 상태에서만 계약을 생성할 수 있습니다.' : undefined}
+                className={`rounded-md border px-3 py-1.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   activePanel === 'contract'
                     ? 'border-brand-blue bg-brand-blue text-white'
                     : 'border-brand-blue bg-white text-brand-blue hover:bg-blue-50'
@@ -413,6 +444,14 @@ function ReservationDetailModal({
               onCancel={() => setActivePanel(null)}
             />
           )}
+          {activePanel === 'hold' && (
+            <ExtendHoldPanel
+              reservationId={reservationId}
+              currentHoldExpiresAt={detail.holdExpiresAt ?? undefined}
+              onDone={handleActionDone}
+              onCancel={() => setActivePanel(null)}
+            />
+          )}
           {activePanel === 'contract' && (
             <CompleteToContractPanel
               reservationId={reservationId}
@@ -435,6 +474,81 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+// ─── 선점 연장 패널 ───────────────────────────────────────────────────────────
+
+function ExtendHoldPanel({
+  reservationId,
+  currentHoldExpiresAt,
+  onDone,
+  onCancel,
+}: {
+  reservationId: string;
+  currentHoldExpiresAt?: string;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [date, setDate] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!date) {
+      setError('새 만료일을 선택하세요.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      // 선택한 날짜의 끝(KST)까지 선점을 유지한다.
+      await AdminReservationService.extendHold(reservationId, {
+        holdExpiresAt: toApiOffsetDateTime(date, '23:59:59'),
+      });
+      onDone();
+    } catch (e) {
+      setError(extractApiError(e, '선점 기간 변경에 실패했습니다.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="rounded-lg border border-brand-gray-200 bg-brand-gray-50 p-4">
+      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-gray-500">선점 연장</p>
+      {error && <div className="mb-2"><ErrorBox message={error} /></div>}
+      <div className="flex flex-col gap-3">
+        <p className="text-xs text-brand-gray-600">현재 만료: {fmtDatetime(currentHoldExpiresAt)}</p>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-brand-gray-600">새 만료일</label>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="rounded-md border border-brand-gray-200 bg-white px-3 py-2 text-sm focus:border-brand-blue focus:outline-none"
+          />
+          <p className="mt-1 text-xs text-brand-gray-500">선택한 날짜의 23:59까지 선점이 유지됩니다.</p>
+        </div>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-md border border-brand-gray-300 px-3 py-1.5 text-sm font-semibold text-brand-gray-700 hover:bg-brand-gray-100"
+          >
+            취소
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-md bg-brand-black px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50 hover:opacity-80"
+          >
+            {saving ? '저장 중…' : '저장'}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
 // ─── 상태 변경 패널 ───────────────────────────────────────────────────────────
 
 function StatusUpdatePanel({
@@ -448,7 +562,10 @@ function StatusUpdatePanel({
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const [status, setStatus] = useState<ReservationStatus>(currentStatus as ReservationStatus);
+  // 현재 상태와 다른 첫 선택지를 기본값으로 둔다(PENDING → 상담중, CONSULTING → 반려).
+  const [status, setStatus] = useState<ReservationStatus>(
+    SELECTABLE_STATUSES.find((s) => s !== currentStatus) ?? 'REJECTED',
+  );
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -482,11 +599,9 @@ function StatusUpdatePanel({
             onChange={(e) => setStatus(e.target.value as ReservationStatus)}
             className="w-full rounded-md border border-brand-gray-200 bg-white px-3 py-2 text-sm focus:border-brand-blue focus:outline-none"
           >
-            {(Object.entries(RESERVATION_STATUS_LABEL) as [ReservationStatus, string][]).map(
-              ([s, label]) => (
-                <option key={s} value={s}>{label}</option>
-              ),
-            )}
+            {SELECTABLE_STATUSES.filter((s) => s !== currentStatus).map((s) => (
+              <option key={s} value={s}>{RESERVATION_STATUS_LABEL[s]}</option>
+            ))}
           </select>
         </div>
         <div>

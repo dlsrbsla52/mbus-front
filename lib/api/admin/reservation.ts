@@ -71,6 +71,13 @@ export interface CompleteToContractRequest {
   note?: string;
 }
 
+/**
+ * 선점 기간 연장 요청 DTO
+ */
+export interface ExtendHoldRequest {
+  holdExpiresAt: string; // ISO datetime, 현재 시각 이후
+}
+
 const unwrap = <T>(p: Promise<{ data: ApiResponse<T> }>): Promise<T> =>
   p.then((res) => res.data.data);
 
@@ -130,6 +137,18 @@ export const AdminReservationService = {
   ): Promise<null> =>
     unwrap<null>(
       api.put(`/api/v1/admin/reservation/reservations/${reservationId}/assignee`, data)
+    ),
+
+  /**
+   * 선점 기간 연장 (진행 중인 예약만 가능)
+   * PUT /api/v1/admin/reservation/reservations/{reservationId}/hold
+   */
+  extendHold: (
+    reservationId: string,
+    data: ExtendHoldRequest
+  ): Promise<null> =>
+    unwrap<null>(
+      api.put(`/api/v1/admin/reservation/reservations/${reservationId}/hold`, data)
     ),
 
   /**
