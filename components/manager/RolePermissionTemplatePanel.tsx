@@ -1,62 +1,33 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import useSWR from 'swr';
+import { useState } from 'react';
 import { Info, Plus, Trash2 } from 'lucide-react';
-import {
-  AuthorizationService,
-  type PermissionSummary,
-  type RoleDetail,
-  type RoleSummary,
-} from '@/lib/api/admin/authorization';
+import { AuthorizationService } from '@/lib/api/admin/authorization';
 import { extractApiError } from '@/lib/api/result-codes';
 
 export default function RolePermissionTemplatePanel() {
-  const [roles, setRoles] = useState<RoleSummary[]>([]);
-  const [allPermissions, setAllPermissions] = useState<PermissionSummary[]>([]);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
-  const [roleDetail, setRoleDetail] = useState<RoleDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const loadRoles = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [r, p] = await Promise.all([
-        AuthorizationService.listRoles(),
-        AuthorizationService.listPermissions(),
-      ]);
-      setRoles(r);
-      setAllPermissions(p);
-      if (r.length > 0) setSelectedRoleId((prev) => prev ?? r[0].id);
-    } catch (e) {
-      setError(extractApiError(e, '역할 정보를 불러오지 못했습니다.'));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const loadDetail = useCallback(async (roleId: string) => {
-    setDetailLoading(true);
-    try {
-      setRoleDetail(await AuthorizationService.getRole(roleId));
-    } catch (e) {
-      setError(extractApiError(e, '역할 상세를 불러오지 못했습니다.'));
-    } finally {
-      setDetailLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadRoles(); }, [loadRoles]);
-  useEffect(() => { if (selectedRoleId) loadDetail(selectedRoleId); }, [selectedRoleId, loadDetail]);
+  const [chosenRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [actionError, setError] = useState('');
+  const { data, isLoading: loading, error: rolesError } = useSWR('admin-role-templates', () =>
+    Promise.all([AuthorizationService.listRoles(), AuthorizationService.listPermissions()]),
+  );
+  const [roles, allPermissions] = data ?? [[], []];
+  const selectedRoleId = chosenRoleId ?? roles[0]?.id;
+  const { data: roleDetail, isLoading: detailLoading, error: detailError, mutate: loadDetail } = useSWR(
+    selectedRoleId ? ['admin-role-detail', selectedRoleId] as const : null,
+    ([, id]) => AuthorizationService.getRole(id),
+  );
+  const error = actionError
+    || (rolesError && extractApiError(rolesError, '역할 정보를 불러오지 못했습니다.'))
+    || (detailError && extractApiError(detailError, '역할 상세를 불러오지 못했습니다.'));
 
   const onAssign = async (permissionName: string) => {
     if (!selectedRoleId) return;
     setError('');
     try {
       await AuthorizationService.assignPermissionToRole(selectedRoleId, { permissionName });
-      await loadDetail(selectedRoleId);
+      await loadDetail();
     } catch (e) {
       setError(extractApiError(e, '권한 부여에 실패했습니다.'));
     }
@@ -68,13 +39,14 @@ export default function RolePermissionTemplatePanel() {
     setError('');
     try {
       await AuthorizationService.removePermissionFromRole(selectedRoleId, permissionName);
-      await loadDetail(selectedRoleId);
+      await loadDetail();
     } catch (e) {
       setError(extractApiError(e, '권한 해제에 실패했습니다.'));
     }
   };
 
   if (loading) return <p className="text-sm text-brand-gray-400">불러오는 중...</p>;
+  if (rolesError) return <p role="alert" className="text-sm text-danger">{error}</p>;
   if (roles.length === 0) return <p className="text-sm text-brand-gray-400">등록된 역할이 없습니다.</p>;
 
   const assignedNames = new Set(roleDetail?.permissions.map((p) => String(p.name)) ?? []);

@@ -1,5 +1,5 @@
-import { api } from './client';
-import type { ApiResponse } from './types';
+import { api } from '../client';
+import type { ApiResponse } from '../types';
 
 export interface StopPrice {
   id: string;
@@ -46,7 +46,7 @@ const unwrapPrice = (
 ): Promise<StopPrice> => p.then((res) => toStopPrice(res.data.data));
 
 /** 정류장별 현재 광고 단가를 관리하는 관리자 API. */
-export const StopPriceService = {
+export const AdminStopPriceService = {
   /**
    * 단가 조회. 백엔드는 미등록 정류소에 대해 404 가 아니라
    * `{ code: "00000", message: "성공하였습니다." }` (data 키 자체가 생략된 성공 응답)을 반환하므로

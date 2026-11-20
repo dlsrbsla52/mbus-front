@@ -141,7 +141,7 @@ export const config = { matcher: '/((?!_next|api|favicon).*)' };
 
 - 확장: `member.ts`(admin 회원조회 추가), `stop.ts`(상세/검색/nearby/availability), `contract.ts`(getMy/getOne/sign/pay/renew), `reservation.ts`(getOne/cancel).
 - 신규:
-  - `lib/api/stop-price.ts`
+  - `lib/api/admin/stop-price.ts`
   - `lib/api/admin/contract.ts`, `lib/api/admin/reservation.ts`, `lib/api/admin/notification.ts`, `lib/api/admin/authorization.ts` (iam 의 admin/authorization 즉시 연결 가능)
 - `npm run gen:api` 로 `lib/api/generated/{iam,stop,reservation}.ts` 정기 생성 (백엔드 안정화 후).
 

@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Database, MapPin } from 'lucide-react';
 import FormField, { Select, TextInput } from '@/components/common/FormField';
-import { STOP_TYPE_OPTIONS, StopService, type StopBulkRegisterResult, type StopType } from '@/lib/api/stop';
+import { AdminStopService, type StopBulkRegisterResult } from '@/lib/api/admin/stop';
+import { STOP_TYPE_OPTIONS, type StopType } from '@/lib/api/stop-model';
 import { extractApiError } from '@/lib/api/result-codes';
 
 const STOP_TYPES = STOP_TYPE_OPTIONS.map(([value]) => value) as [StopType, ...StopType[]];
@@ -115,7 +116,7 @@ function SingleForm({
   const onSubmit = async (data: FormValues) => {
     try {
       setServerError('');
-      await StopService.createSimple(data);
+      await AdminStopService.createSimple(data);
       onCreated();
     } catch (e) {
       setServerError(extractApiError(e, '등록에 실패했습니다.'));
@@ -221,7 +222,7 @@ function BulkPanel({ onCompleted, bare }: { onCompleted?: () => void; bare: bool
     setRunning(true);
     setResult(null);
     try {
-      const data = await StopService.registerBulk();
+      const data = await AdminStopService.registerBulk();
       setResult({ ok: true, data });
       onCompleted?.();
     } catch (e) {

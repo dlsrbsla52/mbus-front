@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import useSWR from 'swr';
+import { useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import DataTable, { type DataTableColumn } from '@/components/common/DataTable';
 import Pagination from '@/components/common/Pagination';
@@ -14,12 +15,9 @@ import {
   type MemberType,
   type MemberStatus,
   type MemberSearchItem,
-  type AdminMemberDetailFull,
-  type MemberStatusHistoryItem,
   type CreateAdminMemberRequest,
 } from '@/lib/api/member';
 import { extractApiError } from '@/lib/api/result-codes';
-import type { PageResult } from '@/lib/api/types';
 
 
 type Tab = 'admin' | 'user';
@@ -99,16 +97,12 @@ export default function ManagerMemberPage() {
   const [applied, setApplied] = useState<AppliedFilters>(EMPTY_FILTERS);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [result, setResult] = useState<PageResult<MemberSearchItem> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
+  const { data: result, isLoading: loading, error: listError, mutate: load } = useSWR(
+    ['admin-member-search', tab, page, pageSize, applied] as const,
+    ([, tab, page, pageSize, applied]) => {
       const params = {
         page,
         size: pageSize,
@@ -119,30 +113,25 @@ export default function ManagerMemberPage() {
         ...(applied.createdFrom ? { createdFrom: applied.createdFrom } : {}),
         ...(applied.createdTo ? { createdTo: applied.createdTo } : {}),
       };
-      const data =
-        tab === 'admin'
-          ? await AdminMemberService.searchAdmins(params)
-          : await AdminMemberService.searchUsers(params);
-      setResult(data);
-    } catch (e) {
-      setError(extractApiError(e, '회원 목록을 불러오지 못했습니다.'));
-    } finally {
-      setLoading(false);
-    }
-  }, [tab, page, pageSize, applied]);
+      return tab === 'admin' ? AdminMemberService.searchAdmins(params) : AdminMemberService.searchUsers(params);
+    },
+  );
+  const error = listError && extractApiError(listError, '회원 목록을 불러오지 못했습니다.');
 
-  useEffect(() => { load(); }, [load]);
-
-  /** 입력 중인 값을 조회 조건으로 확정. 항상 새 객체라 동일 조건 재검색도 재요청된다. */
+  /** 동일 조건에서 검색을 누르면 현재 목록을 다시 조회한다. */
   const applyDraft = () => {
-    setApplied({
+    const filters = {
       keyword: keyword.trim(),
       status: statusFilter,
       type: typeFilter,
       businessNumber: businessNumber.trim(),
       createdFrom,
       createdTo,
-    });
+    };
+    if (page === 0 && Object.entries(filters).every(([key, value]) => applied[key as keyof AppliedFilters] === value)) {
+      void load();
+    }
+    setApplied(filters);
     setPage(0);
   };
 
@@ -160,7 +149,6 @@ export default function ManagerMemberPage() {
     setPage(0);
     clearDraft();
     setApplied(EMPTY_FILTERS);
-    setResult(null);
   };
 
   const onSearch = (e: React.FormEvent) => {
@@ -382,6 +370,7 @@ export default function ManagerMemberPage() {
 
       {selectedId && (
         <MemberDetailModal
+          key={selectedId}
           memberId={selectedId}
           onClose={() => setSelectedId(null)}
           onUpdated={load}
@@ -409,35 +398,18 @@ function MemberDetailModal({
   onClose: () => void;
   onUpdated: () => void;
 }) {
-  const [detail, setDetail] = useState<AdminMemberDetailFull | null>(null);
-  const [history, setHistory] = useState<MemberStatusHistoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [activeAction, setActiveAction] = useState<'suspend' | 'unsuspend' | null>(null);
   const [showHistory, setShowHistory] = useState(false);
-
-  const loadDetail = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [d, h] = await Promise.all([
-        AdminMemberService.fullDetail(memberId),
-        AdminMemberService.statusHistory(memberId),
-      ]);
-      setDetail(d);
-      setHistory(h);
-    } catch (e) {
-      setError(extractApiError(e, '회원 정보를 불러오지 못했습니다.'));
-    } finally {
-      setLoading(false);
-    }
-  }, [memberId]);
-
-  useEffect(() => { loadDetail(); }, [loadDetail]);
+  const { data, isLoading: loading, error: queryError, mutate: loadDetail } = useSWR(
+    ['admin-member-detail', memberId] as const,
+    ([, id]) => Promise.all([AdminMemberService.fullDetail(id), AdminMemberService.statusHistory(id)]),
+  );
+  const [detail, history] = data ?? [null, []];
+  const error = queryError && extractApiError(queryError, '회원 정보를 불러오지 못했습니다.');
 
   const handleActionDone = () => {
     setActiveAction(null);
-    loadDetail();
+    void loadDetail();
     onUpdated();
   };
 

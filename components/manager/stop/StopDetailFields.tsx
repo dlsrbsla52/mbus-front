@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { STOP_TYPE_LABEL, type Stop } from '@/lib/api/stop';
+import { STOP_TYPE_LABEL, type Stop } from '@/lib/api/stop-model';
 
 /** 정류장 상세 필드 표시부. 목록 모달과 `/manager/stop/[id]` 페이지가 공유한다. */
 export default function StopDetailFields({ stop }: { stop: Stop }) {

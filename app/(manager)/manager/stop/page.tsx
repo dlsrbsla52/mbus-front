@@ -13,8 +13,9 @@ import StopDetailFields from '@/components/manager/stop/StopDetailFields';
 import StopCreatePanel from '@/components/manager/stop/StopCreatePanel';
 import StopMapPanel from '@/components/manager/stop/StopMapPanel';
 import { extractApiError } from '@/lib/api/result-codes';
-import { STOP_TYPE_LABEL, STOP_TYPE_OPTIONS, StopService, type Stop, type StopType } from '@/lib/api/stop';
-import type { StopMarker } from '@/lib/api/stop-map';
+import { AdminStopService } from '@/lib/api/admin/stop';
+import { STOP_TYPE_LABEL, STOP_TYPE_OPTIONS, type Stop, type StopType } from '@/lib/api/stop-model';
+import type { StopMarker } from '@/lib/api/admin/stop-map';
 import type { PageResult } from '@/lib/api/types';
 
 /** 목록에서 정류장을 선택했을 때 지도를 확대할 레벨. */
@@ -23,7 +24,7 @@ const FOCUS_LEVEL = 3;
 /**
  * 목록 행의 공통 표현.
  *
- * 목록 모드는 `/api/v1/admin/stop`(전체 페이징), 지도 연동 모드는 `/api/v1/stop/map/bounds`
+ * 목록 모드는 `/api/v1/admin/stop`(전체 페이징), 지도 연동 모드는 `/api/v1/admin/stop/map/bounds`
  * (영역 내 경량 DTO)에서 온다. 두 소스의 컬럼을 하나로 맞춰 테이블 정의를 나누지 않는다.
  */
 interface StopRow {
@@ -82,7 +83,7 @@ export default function ManagerStopListPage() {
     /* eslint-disable-next-line react-hooks/set-state-in-effect */
     setLoading(true);
     setError('');
-    StopService.adminList({
+    AdminStopService.list({
       page,
       size: pageSize,
       ...(submittedKeyword ? { keyword: submittedKeyword } : {}),
@@ -135,7 +136,7 @@ export default function ManagerStopListPage() {
       return;
     }
     try {
-      const stop = await StopService.detail(row.id);
+      const stop = await AdminStopService.detail(row.id);
       if (stop) setDetailStop(stop);
       else setError('해당 정류장을 찾을 수 없습니다.');
     } catch (e) {

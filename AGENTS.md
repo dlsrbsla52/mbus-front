@@ -27,15 +27,40 @@
 ```bash
 npm run dev      # 개발 서버 (localhost:3000)
 npm run build    # 프로덕션 빌드
-npm run lint     # ESLint flat config
+npm run check    # 경고 0개 lint + lint 규칙 테스트 + 라우트 타입 생성 및 타입 검사
+npm run lint     # ESLint만 실행
 npm run gen:api  # OpenAPI 타입 재생성 (iam:8181 / stop:8182 / reservation:8183 필요)
 ```
 
-테스트 러너는 아직 설정되어 있지 않다. 타입 검증이 필요하면 다음 명령을 사용한다.
+프로젝트 lint의 허용·차단 사례는 Node 내장 테스트 러너로 실행한다.
 
 ```bash
-npx tsc --noEmit --incremental false
+npm run test:lint
 ```
+
+## 코드 작성 전 참조할 구현
+
+| 작업 | 먼저 확인할 코드 | 적용 기준 |
+| --- | --- | --- |
+| 토큰 발급·복원 | `store/useAuthStore.ts`, `components/auth/AuthGate.tsx` | 발급된 토큰은 `setTokens`로 저장하고 부팅 시 현재 사이트의 refresh 쿠키로 복원한다. |
+| 일반 예약의 정류소 선택 | `lib/api/stop.ts`, `app/(protected)/reservation/new/page.tsx` | `StopService.list()`로 공개 목록을 조회한다. |
+| 관리자 정류소 관리 | `lib/api/admin/stop.ts`, `app/(manager)/manager/stop/page.tsx` | `AdminStopService.list()`와 `.detail()`을 사용한다. 지도와 단가도 같은 admin 폴더의 서비스를 사용한다. |
+| 정류소 표시와 응답 변환 | `lib/api/stop-model.ts` | 양쪽 화면은 `Stop` 타입과 라벨을 공유하고, 서비스는 `toStop`으로 좌표와 단가를 변환한다. |
+| 인증 후 목록 조회 | `app/(protected)/reservation/new/page.tsx`, `components/auth/ProtectedShell.tsx` | SWR 키에 조회 조건을 포함하고 fetcher는 도메인 서비스를 호출한다. 인증 셸에서 계정별 캐시를 제공한다. |
+| 요청 날짜 조립 | `lib/api/date-serializer.ts`, `app/(manager)/manager/reservation/page.tsx` | 백엔드 필드가 LocalDate이면 `toApiLocalDate`, OffsetDateTime이면 `toApiOffsetDateTime`을 사용한다. |
+| 목록 응답 변환 | `lib/api/admin/contract.ts`의 `listByMember` | 도메인 서비스에서 `toPageResult`로 변환하고 화면에는 변환된 값을 전달한다. |
+
+### ESLint로 검사하는 프로젝트 규칙
+
+`npm run lint`는 Next.js·TypeScript 기본 규칙과 아래 프로젝트 규칙을 함께 실행한다.
+
+- `mbus/ui-api-boundary`는 화면과 훅의 axios·공용 client·SWR fetcher 직접 import, 코드에 직접 쓴 백엔드 경로를 검사한다. 도메인 서비스에서 요청을 정의하고 화면이나 훅은 그 서비스를 호출한다.
+- 관리자 route group, `components/manager`, `hooks/manager`에서는 공개 정류소·예약·계약·회원 서비스 사용을 제한한다. 일반 화면과 공용 훅에서는 `lib/api/admin/`의 실행 코드 import를 제한한다. 타입 전용 import는 허용한다. 서버 Route Handler는 이 UI 규칙의 범위 밖이다.
+- `mbus/no-stored-access-token`은 앱 코드에서 Web Storage의 `setItem`과 속성 대입으로 고정된 토큰 키(`accessToken`, `access_token`, `access-token`)에 쓰는 코드를 검사한다.
+- `mbus/no-internal-api-path`는 앱 코드의 문자열과 템플릿에 직접 쓴 `/api/v1/internal` 경로를 검사한다. 동적으로 조립한 경로는 리뷰에서 호출 대상을 확인한다.
+- `store/useAuthStore.ts`에서는 `no-restricted-imports`로 `zustand/middleware`의 `persist` import를 제한한다.
+
+규칙을 추가할 때는 여기에 적용 범위와 참조 파일을 기록한다. ESLint 기본 규칙은 `eslint.config.mjs`에 설정하고, 코드 구조를 직접 판별해야 하는 규칙은 `scripts/eslint/mbus.mjs`에 작성한다. 오류 메시지에는 고치는 방법과 참고할 구현을 적는다.
 
 ## 프로젝트 핵심 규칙
 
@@ -115,9 +140,10 @@ ReservationService
 코드 변경 후 가능한 범위에서 아래 순서로 검증한다.
 
 ```bash
-npm run lint
-npx tsc --noEmit --incremental false
+npm run check
 npm run build
 ```
+
+GitHub Actions의 PR 검사 이름은 `mbus-check`이다. 기본 브랜치의 필수 상태 검사에 이 이름을 등록하면 검사 실패 시 병합이 차단된다.
 
 `next/font/google`은 build 중 Google Fonts를 fetch한다. 네트워크가 막힌 환경에서는 코드 문제가 없어도 build가 실패할 수 있다.

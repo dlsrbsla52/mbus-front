@@ -1,5 +1,6 @@
 'use client';
 
+import { SWRConfig } from 'swr';
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useRequireAuth, type RequireAuthOptions } from '@/hooks/useRequireAuth';
@@ -7,6 +8,14 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { MemberService } from '@/lib/api/member';
 import { AuthService } from '@/lib/api/auth';
 import { authSiteOfPath, loginPathFor, siteOfToken } from '@/lib/auth/site';
+
+// Give each signed-in account its own request cache.
+const sessionQueries = {
+  provider: () => new Map(),
+  revalidateOnFocus: false,
+  revalidateOnReconnect: false,
+  shouldRetryOnError: false,
+};
 
 interface ProtectedShellProps extends RequireAuthOptions {
   children: React.ReactNode;
@@ -24,7 +33,7 @@ export default function ProtectedShell({
   const userFetchError = useAuthStore((s) => s.userFetchError);
 
   if (isReady) {
-    return <>{children}</>;
+    return <SWRConfig key={user?.id} value={sessionQueries}>{children}</SWRConfig>;
   }
 
   // 사용자 조회 실패 — 토큰은 있는데 user가 없는 상태 → 명시적 재시도 UI

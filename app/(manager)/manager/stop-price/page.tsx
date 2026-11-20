@@ -1,6 +1,7 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import useSWR from 'swr';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Pencil, Search, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/common/PageHeader';
@@ -10,9 +11,9 @@ import PageSizeSelect, { DEFAULT_PAGE_SIZE } from '@/components/common/PageSizeS
 import EmptyState from '@/components/common/EmptyState';
 import Modal from '@/components/common/Modal';
 import { extractApiError } from '@/lib/api/result-codes';
-import { StopPriceService } from '@/lib/api/stop-price';
-import { StopService, STOP_TYPE_LABEL, type Stop } from '@/lib/api/stop';
-import type { PageResult } from '@/lib/api/types';
+import { AdminStopPriceService } from '@/lib/api/admin/stop-price';
+import { AdminStopService } from '@/lib/api/admin/stop';
+import { STOP_TYPE_LABEL, type Stop } from '@/lib/api/stop-model';
 
 const formatPrice = (price: number) => `${price.toLocaleString('ko-KR')}원`;
 
@@ -45,29 +46,13 @@ function StopPriceManager() {
   const [appliedKeyword, setAppliedKeyword] = useState('');
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [result, setResult] = useState<PageResult<Stop> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [detailError, setError] = useState('');
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await StopService.adminList({
-        page,
-        size: pageSize,
-        ...(appliedKeyword ? { keyword: appliedKeyword } : {}),
-      });
-      setResult(data);
-    } catch (e) {
-      setError(extractApiError(e, '정류장 목록을 불러오지 못했습니다.'));
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize, appliedKeyword]);
-
-  useEffect(() => { load(); }, [load]);
+  const { data: result, isLoading: loading, error: listError, mutate } = useSWR(
+    ['admin-stop-prices', page, pageSize, appliedKeyword] as const,
+    ([, page, size, keyword]) => AdminStopService.list({ page, size, ...(keyword ? { keyword } : {}) }),
+  );
+  const error = detailError || (listError && extractApiError(listError, '정류장 목록을 불러오지 못했습니다.'));
 
   /**
    * `?stopId=<pk>` 로 진입하면(정류장 관리 상세 모달의 링크) 해당 정류장의 단가 모달을
@@ -79,7 +64,7 @@ function StopPriceManager() {
     bootstrappedRef.current = true;
     (async () => {
       try {
-        const stop = await StopService.detail(initialStopId);
+        const stop = await AdminStopService.detail(initialStopId);
         if (stop) setSelectedStop(stop);
         else setError('해당 정류장을 찾을 수 없습니다.');
       } catch (e) {
@@ -103,10 +88,11 @@ function StopPriceManager() {
   /** 단가 등록/수정/삭제 후 목록의 해당 행과 열려 있는 모달 상태를 동기화. */
   const applyStopUpdate = (updated: Stop) => {
     setSelectedStop((prev) => (prev && prev.id === updated.id ? updated : prev));
-    setResult((prev) =>
+    void mutate((prev) =>
       prev
         ? { ...prev, content: prev.content.map((s) => (s.id === updated.id ? updated : s)) }
         : prev,
+      { revalidate: false },
     );
   };
 
@@ -283,8 +269,8 @@ function StopPriceModal({
     setSuccess('');
     try {
       const saved = hasPrice
-        ? await StopPriceService.update(stop.id, { unitPrice: nextUnitPrice })
-        : await StopPriceService.create({ stopId: stop.id, unitPrice: nextUnitPrice });
+        ? await AdminStopPriceService.update(stop.id, { unitPrice: nextUnitPrice })
+        : await AdminStopPriceService.create({ stopId: stop.id, unitPrice: nextUnitPrice });
       onSaved({ ...stop, unitPrice: saved.unitPrice, updatedAt: saved.updatedAt });
       setUnitPrice(saved.unitPrice.toLocaleString('ko-KR'));
       setSuccess(hasPrice ? '단가를 수정했습니다.' : '단가를 등록했습니다.');
@@ -302,7 +288,7 @@ function StopPriceModal({
     setError('');
     setSuccess('');
     try {
-      await StopPriceService.remove(stop.id);
+      await AdminStopPriceService.remove(stop.id);
       onSaved({ ...stop, unitPrice: null });
       setUnitPrice('');
       setSuccess('단가를 삭제했습니다.');

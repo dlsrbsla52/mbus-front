@@ -1,12 +1,12 @@
-import { api } from './client';
-import type { StopType } from './stop';
-import type { ApiResponse } from './types';
+import { api } from '../client';
+import type { StopType } from '../stop-model';
+import type { ApiResponse } from '../types';
 
 /**
  * 지도 마커 전용 경량 조회 API.
  *
  * 백엔드 `modules/stop` 의 `map/` 읽기 슬라이스와 1:1 대응한다. 커맨드 경로(`/api/v1/stop`)와 달리
- * 단가·이력 결합이 없고 좌표 4개 컬럼만 내려온다. 마커 클릭 상세는 `StopService.detail(pk)` 로 별도 조회한다.
+ * 단가·이력 결합이 없고 좌표 4개 컬럼만 내려온다. 마커 클릭 상세는 `AdminStopService.detail(pk)` 로 별도 조회한다.
  */
 
 /** 지도에 찍을 정류소 마커 1건. */
@@ -72,7 +72,7 @@ const toStopMarker = (raw: StopMarkerRaw): StopMarker => ({
  */
 const coord = (value: number) => value.toFixed(7);
 
-export const StopMapService = {
+export const AdminStopMapService = {
   /**
    * 지도 현재 영역(bbox)에 포함된 정류소 마커 조회.
    * `GET /api/v1/admin/stop/map/bounds` (iam 어드민 API 경유. 관리자 화면 전용)
