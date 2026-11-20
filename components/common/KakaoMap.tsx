@@ -118,7 +118,8 @@ export default function KakaoMap({
   const detachedIdRef = useRef<string | null>(null);
 
   const [ready, setReady] = useState(false);
-  const [loadError, setLoadError] = useState('');
+  const [loadError, setLoadError] = useState(() => isKakaoMapConfigured()
+    ? '' : '카카오맵 앱 키가 설정되지 않았습니다. (NEXT_PUBLIC_KAKAO_MAP_APP_KEY)');
 
   // 최신 콜백/설정값 참조 — 이벤트 리스너를 다시 붙이지 않기 위함.
   const onBoundsChangeRef = useRef(onBoundsChange);
@@ -149,10 +150,7 @@ export default function KakaoMap({
 
   // ── 지도 생성 (마운트당 1회) ────────────────────────────────────────────────
   useEffect(() => {
-    if (!isKakaoMapConfigured()) {
-      setLoadError('카카오맵 앱 키가 설정되지 않았습니다. (NEXT_PUBLIC_KAKAO_MAP_APP_KEY)');
-      return;
-    }
+    if (!isKakaoMapConfigured()) return;
 
     let disposed = false;
     // cleanup 시점에도 같은 대상을 가리키도록 ref 내용을 지역 변수로 잡아둔다.

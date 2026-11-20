@@ -40,7 +40,7 @@ swagger 실측 기준:
 
 ## 3. 권장 방안 — 기존 admin 목록에 `unitPrice` 추가
 
-새 엔드포인트를 만들기보다, **`GET /api/v1/admin/stop` 응답 아이템에 `unitPrice`(nullable) 를 left join 으로 추가**하는 것이 가장 단순하다. 파라미터/페이징/필터를 그대로 재사용하고 프론트도 기존 `StopService.adminList` 를 그대로 쓴다.
+새 엔드포인트를 만들기보다, **`GET /api/v1/admin/stop` 응답 아이템에 `unitPrice`(nullable) 를 left join 으로 추가**하는 것이 가장 단순하다. 파라미터/페이징/필터를 그대로 재사용하고 프론트도 기존 `AdminStopService.list` 를 그대로 쓴다.
 
 ### 3-1. 응답 스키마 변경
 
@@ -72,7 +72,7 @@ ORDER BY ...
 LIMIT :size OFFSET :page*:size
 ```
 
-⚠️ 기존 단건 `GET /{stopId}/price` 가 "미등록 시 404 아니라 `data` 키 생략된 성공 응답"을 주는 특이 동작이 있다(프론트 `lib/api/stop-price.ts` 주석 참고). 목록에서는 그 관례를 따르지 말고 **`unitPrice: null`** 로 명확히 내려줄 것.
+⚠️ 기존 단건 `GET /{stopId}/price` 가 "미등록 시 404 아니라 `data` 키 생략된 성공 응답"을 주는 특이 동작이 있다(프론트 `lib/api/admin/stop-price.ts` 주석 참고). 목록에서는 그 관례를 따르지 말고 **`unitPrice: null`** 로 명확히 내려줄 것.
 
 ### 3-3. 권한 / 안전
 
@@ -95,7 +95,7 @@ GET /api/v1/admin/stop/prices?keyword=&page=&size=
 ## 5. 이 변경 이후 프론트에서 할 일 (참고용, 백엔드 작업 아님)
 
 - `lib/api/stop.ts` 의 `Stop` 타입 / `toStop` 매퍼에 `unitPrice?: number | null` 추가.
-- `app/(manager)/manager/stop-price/page.tsx` 를 진입 즉시 `StopService.adminList({ page, size })` 로 목록 표시하도록 변경, 행별 lazy `StopPriceService.get` 호출 제거.
+- `app/(manager)/manager/stop-price/page.tsx` 를 진입 즉시 `AdminStopService.list({ page, size })` 로 목록 표시하도록 변경, 행별 lazy `AdminStopPriceService.get` 호출 제거.
 - 등록/수정/삭제는 기존 단건 엔드포인트(`POST/PUT/DELETE .../price`) 그대로 사용.
 
 ## 6. 완료 기준

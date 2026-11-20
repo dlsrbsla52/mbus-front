@@ -16,7 +16,7 @@
 |------|------|
 | `types/kakao-maps.d.ts` | SDK 전역 타입 선언 (공식 `@types` 없음). 사용하는 API 만 선언 |
 | `lib/kakao/sdk.ts` | SDK 로더. 스크립트 태그를 앱 전체에서 1회만 삽입 |
-| `lib/api/stop-map.ts` | `StopMapService.bounds()` — bbox 마커 조회 |
+| `lib/api/admin/stop-map.ts` | `AdminStopMapService.bounds()` — bbox 마커 조회 |
 | `components/common/KakaoMap.tsx` | **도메인 비종속 지도 컴포넌트 (재사용 지점)** |
 | `components/manager/stop/StopMapPanel.tsx` | 지도 + 정류소 bbox 조회 결합 |
 
@@ -101,7 +101,7 @@ KakaoMap            지도 렌더링만. 마커 배열 + 콜백. 정류소를 �
 - 좌표는 **`toFixed(7)` 문자열**로 보낸다. 백엔드가 `String` 으로 받아 `Coordinate` 검증을 거쳐 도메인
   400 을 내리기 때문이고, DB scale 이 7 이라 그 이상 자리수는 의미가 없다.
 - `id` 는 정류소 PK(UUID), `stopId` 는 ARS ID 다. 프론트에서는 `arsId` 로 정규화한다.
-- **지도 응답에는 단가가 없다.** 마커 클릭 상세는 `StopService.detail(pk)` 로 별도 조회한다.
+- **지도 응답에는 단가가 없다.** 마커 클릭 상세는 `AdminStopService.detail(pk)` 로 별도 조회한다.
 - 날짜변경선 교차(`swLng > neLng`)는 백엔드가 400 으로 거부한다.
 
 ---

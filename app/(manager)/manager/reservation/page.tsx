@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import useSWR from 'swr';
+import { useRef, useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import DataTable, { type DataTableColumn } from '@/components/common/DataTable';
 import Pagination from '@/components/common/Pagination';
@@ -10,7 +11,6 @@ import Modal from '@/components/common/Modal';
 import {
   AdminReservationService,
   type AdminReservationRow,
-  type AdminReservationDetail,
 } from '@/lib/api/admin/reservation';
 import { AdminMemberService, type AdminMemberRow } from '@/lib/api/member';
 import {
@@ -20,7 +20,6 @@ import {
 } from '@/lib/api/reservation';
 import { extractApiError } from '@/lib/api/result-codes';
 import { toApiOffsetDateTime } from '@/lib/api/date-serializer';
-import type { PageResult } from '@/lib/api/types';
 
 const STATUS_BADGE: Record<ReservationStatus, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -75,31 +74,17 @@ export default function ManagerReservationPage() {
   const [createdTo, setCreatedTo] = useState('');
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
-  const [result, setResult] = useState<PageResult<AdminReservationRow> | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await AdminReservationService.list({
-        page,
-        size: pageSize,
-        ...(statusFilter ? { status: statusFilter as ReservationStatus } : {}),
-        ...(createdFrom ? { createdFrom } : {}),
-        ...(createdTo ? { createdTo } : {}),
-      });
-      setResult(data);
-    } catch (e) {
-      setError(extractApiError(e, '예약 목록을 불러오지 못했습니다.'));
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize, statusFilter, createdFrom, createdTo]);
-
-  useEffect(() => { load(); }, [load]);
+  const { data: result, isLoading: loading, error: listError, mutate: load } = useSWR(
+    ['admin-reservations', page, pageSize, statusFilter, createdFrom, createdTo] as const,
+    ([, page, size, status, from, to]) => AdminReservationService.list({
+      page, size,
+      ...(status ? { status: status as ReservationStatus } : {}),
+      ...(from ? { createdFrom: from } : {}),
+      ...(to ? { createdTo: to } : {}),
+    }),
+  );
+  const error = listError && extractApiError(listError, '예약 목록을 불러오지 못했습니다.');
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,6 +243,7 @@ export default function ManagerReservationPage() {
 
       {selectedId && (
         <ReservationDetailModal
+          key={selectedId}
           reservationId={selectedId}
           onClose={() => setSelectedId(null)}
           onUpdated={load}
@@ -280,36 +266,21 @@ function ReservationDetailModal({
   onClose: () => void;
   onUpdated: () => void;
 }) {
-  const [detail, setDetail] = useState<AdminReservationDetail | null>(null);
-  const [assigneeLoginId, setAssigneeLoginId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [activePanel, setActivePanel] = useState<ActionPanel>(null);
-
-  const loadDetail = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    setAssigneeLoginId(null);
-    try {
-      const data = await AdminReservationService.detail(reservationId);
-      setDetail(data);
-      if (data.assigneeId) {
-        AdminMemberService.detail(data.assigneeId)
-          .then((m) => setAssigneeLoginId(m.memberName ?? m.loginId))
-          .catch(() => {});
-      }
-    } catch (e) {
-      setError(extractApiError(e, '예약 상세를 불러오지 못했습니다.'));
-    } finally {
-      setLoading(false);
-    }
-  }, [reservationId]);
-
-  useEffect(() => { loadDetail(); }, [loadDetail]);
+  const { data: detail, isLoading: loading, error: detailError, mutate: loadDetail } = useSWR(
+    ['admin-reservation-detail', reservationId] as const,
+    ([, id]) => AdminReservationService.detail(id),
+  );
+  const { data: assignee } = useSWR(
+    detail?.assigneeId ? ['admin-reservation-assignee', detail.assigneeId] as const : null,
+    ([, id]) => AdminMemberService.detail(id),
+  );
+  const assigneeLoginId = assignee?.memberName ?? assignee?.loginId;
+  const error = detailError && extractApiError(detailError, '예약 상세를 불러오지 못했습니다.');
 
   const handleActionDone = () => {
     setActivePanel(null);
-    loadDetail();
+    void loadDetail();
     onUpdated();
   };
 

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import PageHeader from '@/components/common/PageHeader';
 import EmptyState from '@/components/common/EmptyState';
 import StopDetailFields from '@/components/manager/stop/StopDetailFields';
-import { StopService, type Stop } from '@/lib/api/stop';
+import { AdminStopService } from '@/lib/api/admin/stop';
+import type { Stop } from '@/lib/api/stop-model';
 import { extractApiError } from '@/lib/api/result-codes';
 
 interface Params {
@@ -26,7 +27,7 @@ export default function ManagerStopDetailPage({ params }: { params: Promise<Para
     /* eslint-disable-next-line react-hooks/set-state-in-effect */
     setLoading(true);
     setError('');
-    StopService.detail(id)
+    AdminStopService.detail(id)
       .then(setStop)
       .catch((e: unknown) => setError(extractApiError(e, '정류장 정보를 불러오지 못했습니다.')))
       .finally(() => setLoading(false));

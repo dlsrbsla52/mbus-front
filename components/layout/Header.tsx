@@ -43,11 +43,6 @@ const Header = () => {
   // 헤더 배경색 결정: 홈이 아니면 항상 배경색 있음, 홈이면 스크롤 시에만 있음
   const hasBg = !isHomePage || isScrolled;
   
-  // 텍스트 색상 결정: 배경이 있을 때와 없을 때 구분
-  const textColorClass = hasBg ? "text-white" : "text-white"; 
-  // 원본 사이트 컨셉 유지: 투명일 때도 화이트(히어로 배너가 어두우므로), 배경 있을 때도 화이트(배경이 블랙이므로)
-  // 단, 홈이 아닌 일반 페이지(흰색 배경)에서는hasBg가 항상 true가 되도록 설계하여 검은 배경에 흰 글씨 유지.
-
   return (
     <header
       className={`fixed top-0 left-0 w-full z-50 transition-all duration-500 ${

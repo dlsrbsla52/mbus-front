@@ -1,18 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import useSWR from 'swr';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import DataTable, { type DataTableColumn } from '@/components/common/DataTable';
 import Pagination from '@/components/common/Pagination';
-import { StopService, type Stop } from '@/lib/api/stop';
+import { StopService } from '@/lib/api/stop';
+import type { Stop } from '@/lib/api/stop-model';
 import {
   ReservationService,
   type ReservationCreateResponse,
 } from '@/lib/api/reservation';
 import { toApiOffsetDateTime, toApiLocalDate } from '@/lib/api/date-serializer';
 import { extractApiError } from '@/lib/api/result-codes';
-import type { PageResult } from '@/lib/api/types';
 
 const STEPS = [
   { id: 1, label: '정류장 선택' },
@@ -34,36 +35,16 @@ export default function ReservationNewPage() {
   const [keyword, setKeyword] = useState('');
   const [submittedKeyword, setSubmittedKeyword] = useState('');
   const [stopPage, setStopPage] = useState(0);
-  const [stops, setStops] = useState<PageResult<Stop> | null>(null);
-  const [stopsLoading, setStopsLoading] = useState(false);
-  const [stopsError, setStopsError] = useState('');
-
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   // 일부 정류장만 예약된 경우의 정류장별 결과. 전부 성공하면 바로 목록으로 이동하므로 쓰지 않는다.
   const [result, setResult] = useState<ReservationCreateResponse | null>(null);
 
-  useEffect(() => {
-    if (step !== 1) return;
-    let cancelled = false;
-    setStopsLoading(true);
-    setStopsError('');
-    StopService.list({
-      page: stopPage,
-      size: 10,
-      ...(submittedKeyword ? { keyword: submittedKeyword } : {}),
-    })
-      .then((result) => { if (!cancelled) setStops(result); })
-      .catch((e: unknown) => {
-        if (cancelled) return;
-        const msg =
-          (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-          '정류장 목록을 불러오지 못했습니다.';
-        setStopsError(msg);
-      })
-      .finally(() => { if (!cancelled) setStopsLoading(false); });
-    return () => { cancelled = true; };
-  }, [step, stopPage, submittedKeyword]);
+  const { data: stops, isLoading: stopsLoading, error: stopQueryError } = useSWR(
+    step === 1 ? ['reservation-stop-options', stopPage, submittedKeyword] as const : null,
+    ([, page, keyword]) => StopService.list({ page, size: 10, ...(keyword ? { keyword } : {}) }),
+  );
+  const stopsError = stopQueryError && extractApiError(stopQueryError, '정류장 목록을 불러오지 못했습니다.');
 
   const toggleStop = (s: Stop) => {
     const already = draft.stops.some((x) => x.id === s.id);

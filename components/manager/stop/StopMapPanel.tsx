@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import KakaoMap, { type KakaoMapBounds, type KakaoMapMarker } from '@/components/common/KakaoMap';
-import { StopMapService, type StopMarker } from '@/lib/api/stop-map';
+import { AdminStopMapService, type StopMarker } from '@/lib/api/admin/stop-map';
 import { extractApiError } from '@/lib/api/result-codes';
-import type { StopType } from '@/lib/api/stop';
+import type { StopType } from '@/lib/api/stop-model';
 
 /** 429(쿼터 초과) 응답 후 재조회를 억제할 시간. 지도 조작마다 재시도하면 상황이 악화된다. */
 const RATE_LIMIT_COOLDOWN_MS = 30_000;
@@ -82,7 +82,7 @@ export default function StopMapPanel({
 
     setLoading(true);
     try {
-      const result = await StopMapService.bounds(
+      const result = await AdminStopMapService.bounds(
         { ...bounds, ...(stopsTypeRef.current ? { stopsType: stopsTypeRef.current } : {}) },
         controller.signal,
       );

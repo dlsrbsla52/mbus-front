@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import useSWR from 'swr';
+import { useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import PageHeader from '@/components/common/PageHeader';
 import DataTable, { type DataTableColumn } from '@/components/common/DataTable';
@@ -19,11 +20,7 @@ import {
   type ContractMemberSummary,
   type ContractPaymentStatus,
 } from '@/lib/api/admin/contract';
-import {
-  CommissionService,
-  type CommissionRateHistoryResponse,
-  type ContractCommissionOverrideResponse,
-} from '@/lib/api/admin/commission';
+import { CommissionService } from '@/lib/api/admin/commission';
 import { AdminMemberService, MEMBER_TYPE_LABEL, type MemberSearchItem } from '@/lib/api/member';
 import { extractApiError } from '@/lib/api/result-codes';
 import type { PageResult } from '@/lib/api/types';
@@ -102,7 +99,6 @@ export default function ManagerContractPage() {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [member, setMember] = useState<ContractMemberSummary | null>(null);
   const [result, setResult] = useState<PageResult<AdminBusinessContract> | null>(null);
-  const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(false);
@@ -135,7 +131,7 @@ export default function ManagerContractPage() {
     }
   };
 
-  const load = useCallback(async (memberId: string, nextPage: number, size: number) => {
+  const load = async (memberId: string, nextPage: number, size: number) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
     setLoading(true);
@@ -152,12 +148,12 @@ export default function ManagerContractPage() {
     } finally {
       if (requestIdRef.current === requestId) setLoading(false);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    if (!selectedMemberId) return;
-    load(selectedMemberId, page, pageSize);
-  }, [selectedMemberId, page, pageSize, load]);
+  const changePage = (nextPage: number, size = pageSize) => {
+    setPageSize(size);
+    if (selectedMemberId) void load(selectedMemberId, nextPage, size);
+  };
 
   const selectMember = (row: MemberSearchItem) => {
     if (!row.memberId) {
@@ -170,9 +166,9 @@ export default function ManagerContractPage() {
     setSearched(false);
     setKeyword(row.loginId);
     setStatusFilter('');
-    setPage(0);
     setResult(null);
     setMember(null);
+    void load(row.memberId, 0, pageSize);
   };
 
   const rows = statusFilter
@@ -344,7 +340,7 @@ export default function ManagerContractPage() {
               <div className="ml-auto flex items-end">
                 <PageSizeSelect
                   value={pageSize}
-                  onChange={(s) => { setPage(0); setPageSize(s); }}
+                  onChange={(size) => changePage(0, size)}
                 />
               </div>
             </div>
@@ -372,7 +368,7 @@ export default function ManagerContractPage() {
                 <span>
                   전체 {result.totalElements.toLocaleString('ko-KR')}건 · {result.page + 1} / {result.totalPages}페이지
                 </span>
-                <Pagination page={result.page} totalPages={result.totalPages} onChange={setPage} />
+                <Pagination page={result.page} totalPages={result.totalPages} onChange={(nextPage) => changePage(nextPage)} />
               </div>
             )}
           </>
@@ -440,7 +436,7 @@ function ContractDetailModal({
           </dl>
         </section>
 
-        <ContractCommissionPanel contractId={contract.id} memberId={contract.memberId} />
+        <ContractCommissionPanel key={contract.id} contractId={contract.id} memberId={contract.memberId} />
       </div>
     </Modal>
   );
@@ -458,34 +454,18 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 // ─── 계약별 정산 비율 오버라이드 ──────────────────────────────────────────────
 
 function ContractCommissionPanel({ contractId, memberId }: { contractId: string; memberId: string }) {
-  const [override, setOverride] = useState<ContractCommissionOverrideResponse | null>(null);
-  const [history, setHistory] = useState<CommissionRateHistoryResponse[]>([]);
-  const [rate, setRate] = useState('');
+  const [draftRate, setRate] = useState<string | null>(null);
   const [reason, setReason] = useState('');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [saveError, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [ov, hist] = await Promise.all([
-        CommissionService.getContractOverride(contractId),
-        CommissionService.getContractHistory(contractId),
-      ]);
-      setOverride(ov);
-      setHistory(hist);
-      setRate(ov ? String(ov.commissionRate) : '');
-    } catch (e) {
-      setError(extractApiError(e, '정산 비율 정보를 불러오지 못했습니다.'));
-    } finally {
-      setLoading(false);
-    }
-  }, [contractId]);
-
-  useEffect(() => { load(); }, [load]);
+  const { data, isLoading: loading, error: queryError, mutate: load } = useSWR(
+    ['admin-contract-commission', contractId] as const,
+    ([, id]) => Promise.all([CommissionService.getContractOverride(id), CommissionService.getContractHistory(id)]),
+  );
+  const [override, history] = data ?? [null, []];
+  const rate = draftRate ?? (override ? String(override.commissionRate) : '');
+  const error = saveError || (queryError && extractApiError(queryError, '정산 비율 정보를 불러오지 못했습니다.'));
 
   const onSave = async () => {
     const nextRate = parseFloat(rate);
@@ -505,6 +485,7 @@ function ContractCommissionPanel({ contractId, memberId }: { contractId: string;
       setReason('');
       setSuccess('계약별 정산 비율이 저장되었습니다.');
       await load();
+      setRate(null);
     } catch (e) {
       setError(extractApiError(e, '정산 비율 저장에 실패했습니다.'));
     } finally {
