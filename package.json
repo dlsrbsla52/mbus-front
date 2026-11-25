@@ -10,7 +10,9 @@
     "test:lint": "node --test scripts/eslint/mbus.test.mjs",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
     "check": "npm run lint && npm run test:lint && npm run typecheck",
-    "gen:api": "bash scripts/gen-api.sh"
+    "gen:api": "bash scripts/gen-api.sh",
+    "legacy:crawl": "node scripts/legacy/crawl.mjs",
+    "legacy:import": "node scripts/legacy/import.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -34,6 +36,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "openapi-typescript": "^7.13.0",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

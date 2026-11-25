@@ -48,3 +48,5 @@ next-env.d.ts
 
 # test
 .next.bak-cpu-test/
+# 기존 사이트 이관 스크립트 출력물(크롤링 결과·원본 이미지)
+/scripts/legacy/out/
