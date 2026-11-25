@@ -7,11 +7,15 @@ import {
   BellRing,
   CalendarClock,
   CircleDollarSign,
+  CircleHelp,
   CirclePercent,
   FileSignature,
+  Images,
   KeyRound,
   LayoutDashboard,
   MapPin,
+  Megaphone,
+  MessageSquareText,
   ShieldCheck,
   Users,
   type LucideIcon,
@@ -31,6 +35,10 @@ const ICONS: Record<string, LucideIcon> = {
   ShieldCheck,
   CirclePercent,
   KeyRound,
+  Images,
+  Megaphone,
+  CircleHelp,
+  MessageSquareText,
 };
 
 interface SidebarProps {

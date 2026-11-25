@@ -1,0 +1,12 @@
+# Cloudflare Pages 리다이렉트: 기존 mbus.co.kr(cafe24) 주소 → 새 경로 (쿼리는 버리고 목록으로 보낸다)
+/default/main/home.php            /                  301
+/default/company/greeting.php     /company           301
+/default/company/location.php     /company/location  301
+/default/business/areas.php       /media             301
+/default/business/introduction.php /media/guide      301
+/default/gallery/gallery1.php     /portfolio         301
+/default/cs/qa.php                /inquiry           301
+/default/customer/notice.php      /support/notice    301
+/default/customer/faq.php         /support/faq       301
+/default/member/policy.php        /privacy           301
+/default/*                        /                  301

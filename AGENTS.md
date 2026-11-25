@@ -55,7 +55,7 @@ npm run test:lint
 `npm run lint`는 Next.js·TypeScript 기본 규칙과 아래 프로젝트 규칙을 함께 실행한다.
 
 - `mbus/ui-api-boundary`는 화면과 훅의 axios·공용 client·SWR fetcher 직접 import, 코드에 직접 쓴 백엔드 경로를 검사한다. 도메인 서비스에서 요청을 정의하고 화면이나 훅은 그 서비스를 호출한다.
-- 관리자 route group, `components/manager`, `hooks/manager`에서는 공개 정류소·예약·계약·회원 서비스 사용을 제한한다. 일반 화면과 공용 훅에서는 `lib/api/admin/`의 실행 코드 import를 제한한다. 타입 전용 import는 허용한다. 서버 Route Handler는 이 UI 규칙의 범위 밖이다.
+- 관리자 route group, `components/manager`, `hooks/manager`에서는 공개 정류소·예약·계약·회원·콘텐츠(`ContentService`) 서비스 사용을 제한한다. 콘텐츠 타입과 라벨은 `lib/api/content-model.ts`에서 가져오고(`stop-model.ts`와 같은 방식), 요청은 `lib/api/admin/content.ts`의 `AdminContentService`를 쓴다. 일반 화면과 공용 훅에서는 `lib/api/admin/`의 실행 코드 import를 제한한다. 타입 전용 import는 허용한다. 서버 Route Handler는 이 UI 규칙의 범위 밖이다.
 - `mbus/no-stored-access-token`은 앱 코드에서 Web Storage의 `setItem`과 속성 대입으로 고정된 토큰 키(`accessToken`, `access_token`, `access-token`)에 쓰는 코드를 검사한다.
 - `mbus/no-internal-api-path`는 앱 코드의 문자열과 템플릿에 직접 쓴 `/api/v1/internal` 경로를 검사한다. 동적으로 조립한 경로는 리뷰에서 호출 대상을 확인한다.
 - `store/useAuthStore.ts`에서는 `no-restricted-imports`로 `zustand/middleware`의 `persist` import를 제한한다.

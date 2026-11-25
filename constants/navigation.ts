@@ -1,39 +1,54 @@
-export const NAV_ITEMS = [
-  { name: "회사소개", href: "/intro" },
-  { name: "비즈니스", href: "/business" },
-  { name: "포트폴리오", href: "/portfolio" },
-  { name: "고객지원", href: "/support" },
-  { name: "홍보센터", href: "/news" },
-];
-
-export const SERVICE_ITEMS = [
-  {
-    id: 1,
-    title: "디지털 마케팅",
-    desc: "데이터 기반의 정교한 퍼포먼스 마케팅과 브랜드 전략을 수립합니다.",
-    icon: "Monitor",
-  },
-  {
-    id: 2,
-    title: "컨텐츠 제작",
-    desc: "사용자의 감각을 깨우는 고퀄리티 멀티미디어 컨텐츠를 기획하고 제작합니다.",
-    icon: "Layout",
-  },
-  {
-    id: 3,
-    title: "시스템 통합(SI)",
-    desc: "안정적이고 확장 가능한 기업용 시스템 및 애플리케이션을 구축합니다.",
-    icon: "Cloud",
-  },
-  {
-    id: 4,
-    title: "클라우드 서비스",
-    desc: "안전한 데이터 관리와 클라우드 마이그레이션을 위한 토탈 솔루션을 제공합니다.",
-    icon: "ShieldCheck",
-  },
-];
-
 import type { MemberType, Permission } from "@/lib/api/member";
+
+export interface SiteMenuChild {
+  label: string;
+  href: string;
+}
+
+export interface SiteMenuItem {
+  label: string;
+  href: string;
+  /** 서브 비주얼 아래 하위 메뉴 탭. 하나뿐이면 탭도 하나만 보인다. */
+  children: SiteMenuChild[];
+}
+
+/** 공개 사이트 메뉴. 기존 mbus.co.kr 메뉴 구성과 같다. */
+export const SITE_MENU: SiteMenuItem[] = [
+  {
+    label: "회사소개",
+    href: "/company",
+    children: [
+      { label: "인사말", href: "/company" },
+      { label: "오시는 길", href: "/company/location" },
+    ],
+  },
+  {
+    label: "매체소개",
+    href: "/media",
+    children: [
+      { label: "매체소개", href: "/media" },
+      { label: "매체안내", href: "/media/guide" },
+    ],
+  },
+  {
+    label: "포트폴리오",
+    href: "/portfolio",
+    children: [{ label: "포트폴리오", href: "/portfolio" }],
+  },
+  {
+    label: "온라인 문의",
+    href: "/inquiry",
+    children: [{ label: "온라인 문의", href: "/inquiry" }],
+  },
+  {
+    label: "고객센터",
+    href: "/support/notice",
+    children: [
+      { label: "공지사항", href: "/support/notice" },
+      { label: "FAQ", href: "/support/faq" },
+    ],
+  },
+];
 
 export interface ManagerNavItem {
   label: string;
@@ -85,6 +100,30 @@ export const MANAGER_NAV: ManagerNavGroup[] = [
     items: [
       { label: "회원 관리", href: "/manager/member", icon: "Users" },
       { label: "갱신 알림", href: "/manager/notification", icon: "BellRing" },
+    ],
+  },
+  {
+    title: "콘텐츠",
+    items: [
+      {
+        label: "포트폴리오",
+        href: "/manager/portfolio",
+        icon: "Images",
+        requireMemberType: ["ADMIN_MASTER", "ADMIN_DEVELOPER"],
+      },
+      {
+        label: "공지사항",
+        href: "/manager/notice",
+        icon: "Megaphone",
+        requireMemberType: ["ADMIN_MASTER", "ADMIN_DEVELOPER"],
+      },
+      {
+        label: "FAQ",
+        href: "/manager/faq",
+        icon: "CircleHelp",
+        requireMemberType: ["ADMIN_MASTER", "ADMIN_DEVELOPER"],
+      },
+      { label: "온라인 문의", href: "/manager/inquiry", icon: "MessageSquareText" },
     ],
   },
   {

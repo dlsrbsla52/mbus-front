@@ -1,88 +1,84 @@
 import React from "react";
 import Link from "next/link";
-import { Share2, Globe, PlayCircle, Phone, Mail, MapPin } from "lucide-react";
+import { ChevronUp } from "lucide-react";
+import { SITE_MENU } from "@/constants/navigation";
+import { COMPANY_INFO, FAMILY_SITES, SNS_LINKS } from "@/constants/site";
 
+const Divider = () => <span className="mx-2 text-white/20">/</span>;
+
+/** 공개 사이트 푸터. 기존 mbus.co.kr 푸터(메뉴 · 회사 정보 · SNS · 관련 사이트)를 재현한다. */
 const Footer = () => {
+  const snsLinks = SNS_LINKS.filter((sns) => sns.href);
+
   return (
-    <footer className="bg-brand-black text-white pt-16 pb-12">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 pb-12 border-b border-gray-800">
-          {/* Company Info */}
-          <div className="space-y-6">
-            <Link href="/" className="inline-block">
-              <span className="text-2xl font-bold tracking-tighter">
-                MEDIA<span className="text-brand-blue">BUS</span>
-              </span>
+    <footer className="bg-[#111111] pb-14 pt-12 text-[13px] text-[#999] lg:pt-[60px]">
+      <div className="mx-auto max-w-[1430px] px-[15px]">
+        <nav className="flex flex-wrap gap-x-10 gap-y-3" aria-label="푸터 메뉴">
+          {SITE_MENU.map((item) => (
+            <Link key={item.href} href={item.href} className="text-[14px] font-medium text-white hover:text-[#6fc8ff]">
+              {item.label}
             </Link>
-            <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
-              최고의 기술과 창의적인 아이디어로 디지털 미디어 시대를 선도하는 미디어버스입니다.
+          ))}
+        </nav>
+
+        <div className="mt-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <address className="space-y-2 not-italic leading-relaxed">
+            <p>
+              ({COMPANY_INFO.postalCode}) {COMPANY_INFO.address} {COMPANY_INFO.tagline}
+              <Divider />
+              전화 : {COMPANY_INFO.tel}
+              <Divider />
+              팩스 : {COMPANY_INFO.fax}
+              <Divider />
+              사업자등록번호 : {COMPANY_INFO.businessNumber}
             </p>
-            <div className="flex space-x-4">
-              <Link href="#" className="p-2 bg-gray-900 rounded-full hover:bg-brand-blue transition-colors">
-                <Share2 size={18} />
+            <p>
+              대표 : {COMPANY_INFO.ceo}
+              <Divider />
+              개인정보관리책임자 : {COMPANY_INFO.privacyOfficer}
+              <Divider />
+              <a href={`mailto:${COMPANY_INFO.email}`} className="hover:text-white">
+                {COMPANY_INFO.email}
+              </a>
+              <Divider />
+              <Link href="/privacy" className="hover:text-white">
+                개인정보처리방침
               </Link>
-              <Link href="#" className="p-2 bg-gray-900 rounded-full hover:bg-brand-blue transition-colors">
-                <Globe size={18} />
-              </Link>
-              <Link href="#" className="p-2 bg-gray-900 rounded-full hover:bg-brand-blue transition-colors">
-                <PlayCircle size={18} />
-              </Link>
-            </div>
-          </div>
+            </p>
+            <p>© MEDIABUS. All Rights Reserved.</p>
+          </address>
 
-
-          {/* Site Map 1 */}
-          <div>
-            <h4 className="text-lg font-bold mb-6">회사소개</h4>
-            <ul className="space-y-3 text-gray-400 text-sm">
-              <li><Link href="#" className="hover:text-white transition-colors">미디어버스 소식</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">연혁 및 실적</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">찾아오시는 길</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">채용안내</Link></li>
-            </ul>
-          </div>
-
-          {/* Site Map 2 */}
-          <div>
-            <h4 className="text-lg font-bold mb-6">주요서비스</h4>
-            <ul className="space-y-3 text-gray-400 text-sm">
-              <li><Link href="#" className="hover:text-white transition-colors">디지털 마케팅</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">컨텐츠 제작</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">시스템 통합(SI)</Link></li>
-              <li><Link href="#" className="hover:text-white transition-colors">클라우드 솔루션</Link></li>
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h4 className="text-lg font-bold mb-6">고객센터</h4>
-            <ul className="space-y-4 text-gray-400 text-sm">
-              <li className="flex items-center space-x-3">
-                <Phone size={16} className="text-brand-blue" />
-                <span>02-123-4567</span>
-              </li>
-              <li className="flex items-center space-x-3">
-                <Mail size={16} className="text-brand-blue" />
-                <span>contact@mediabus.co.kr</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <MapPin size={16} className="text-brand-blue flex-shrink-0 mt-1" />
-                <span>서울특별시 강남구 테헤란로 123, 미디어버스 빌딩 15층</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        {/* Bottom Credits */}
-        <div className="mt-12 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500 space-y-4 md:space-y-0">
-          <div className="flex items-center space-x-6">
-            <span>© 2024 MEDIABUS. All rights reserved.</span>
-            <Link href="#" className="hover:text-white transition-colors">이용약관</Link>
-            <Link href="#" className="hover:text-white transition-colors font-bold">개인정보처리방침</Link>
-          </div>
-          <div className="flex space-x-4">
-            <span className="text-gray-600">사업자등록번호: 123-45-67890</span>
-            <span className="text-gray-600">대표이사: 홍길동</span>
+          <div className="flex flex-col items-start gap-4 lg:items-end">
+            {snsLinks.length > 0 && (
+              <div className="flex items-center gap-3">
+                {snsLinks.map((sns) => (
+                  <a key={sns.label} href={sns.href ?? undefined} target="_blank" rel="noreferrer" aria-label={sns.label}>
+                    {/* eslint-disable-next-line @next/next/no-img-element -- 정적 아이콘 */}
+                    <img src={sns.icon} alt="" className="h-[22px] w-auto opacity-80 hover:opacity-100" />
+                  </a>
+                ))}
+              </div>
+            )}
+            <details className="group relative">
+              <summary className="flex w-[200px] cursor-pointer list-none items-center justify-between border border-white/30 px-4 py-2 text-[12px] text-white/80 hover:text-white">
+                관련 사이트 바로 가기
+                <ChevronUp size={14} className="transition-transform group-open:rotate-180" />
+              </summary>
+              <ul className="absolute bottom-full left-0 mb-1 w-[200px] border border-white/20 bg-[#1b1b1b] py-1">
+                {FAMILY_SITES.map((site) => (
+                  <li key={site.href}>
+                    <a
+                      href={site.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block px-4 py-2 text-[12px] text-white/70 hover:bg-white/10 hover:text-white"
+                    >
+                      {site.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
           </div>
         </div>
       </div>
