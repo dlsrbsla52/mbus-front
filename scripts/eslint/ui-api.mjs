@@ -8,6 +8,7 @@ const publicServices = new Map([
   ["lib/api/member", ["MemberService", "AdminMemberService"]],
   ["lib/api/contract", ["ContractService", "AdminContractService"]],
   ["lib/api/reservation", ["ReservationService", "AdminReservationService"]],
+  ["lib/api/content", ["ContentService", "AdminContentService"]],
 ]);
 
 // Match the root alias and relative paths against the same project module.
@@ -40,7 +41,7 @@ const uiApiBoundary = {
     schema: [{ enum: ["manager", "public"] }],
     messages: {
       transport: "화면의 백엔드 요청은 lib/api의 도메인 서비스를 통해 호출하세요.",
-      publicService: "관리자 화면에서는 {{replacement}}를 사용하세요. 정류소 예시는 lib/api/admin/stop.ts에 있습니다.",
+      publicService: "관리자 화면에서는 {{replacement}}를 사용하세요. 관리자 서비스 예시는 lib/api/admin/stop.ts, lib/api/admin/content.ts에 있습니다. 타입·라벨은 *-model.ts에서 가져오세요.",
       adminService: "일반 화면은 공개 서비스를 사용하세요. 정류소 목록은 lib/api/stop.ts의 StopService.list()입니다.",
     },
   },

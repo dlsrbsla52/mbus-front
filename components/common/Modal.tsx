@@ -45,10 +45,10 @@ export default function Modal({ open, onClose, title, children, footer, size = '
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
-        className={`w-full ${SIZE_CLASS[size]} rounded-lg bg-white shadow-2xl`}
+        className={`flex max-h-[calc(100dvh-3rem)] w-full flex-col ${SIZE_CLASS[size]} rounded-lg bg-white shadow-2xl`}
       >
         {title && (
-          <div className="flex items-center justify-between border-b border-brand-gray-200 px-5 py-4">
+          <div className="flex shrink-0 items-center justify-between border-b border-brand-gray-200 px-5 py-4">
             <h2 className="text-lg font-bold text-brand-black">{title}</h2>
             <button
               type="button"
@@ -60,9 +60,9 @@ export default function Modal({ open, onClose, title, children, footer, size = '
             </button>
           </div>
         )}
-        <div className="px-5 py-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-2 border-t border-brand-gray-200 bg-brand-gray-50 px-5 py-3">
+          <div className="flex shrink-0 items-center justify-end gap-2 rounded-b-lg border-t border-brand-gray-200 bg-brand-gray-50 px-5 py-3">
             {footer}
           </div>
         )}

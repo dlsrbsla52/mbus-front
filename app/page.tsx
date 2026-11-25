@@ -1,18 +1,21 @@
-import HomeHero from "@/components/home/HomeHero";
-import ServiceGrid from "@/components/home/ServiceGrid";
+import HeroSlider from '@/components/home/HeroSlider';
+import CommitmentSection from '@/components/home/CommitmentSection';
+import PartnersSection from '@/components/home/PartnersSection';
+import CompanySection from '@/components/home/CompanySection';
+import CustomerSection from '@/components/home/CustomerSection';
+import SiteSWRConfig from '@/components/site/SiteSWRConfig';
 
+/** 홈. 기존 mbus.co.kr 메인과 같은 순서로 구성한다. */
 export default function Home() {
   return (
-    <div className="flex flex-col w-full">
-      {/* Hero Section */}
-      <HomeHero />
-
-      {/* Service Grid Section */}
-      <ServiceGrid />
-
-      {/* 추가 섹션들이 들어올 자리 (예: Portfolio, News 등) */}
-    </div>
+    <SiteSWRConfig>
+      <div className="flex w-full flex-col">
+        <HeroSlider />
+        <CommitmentSection />
+        <PartnersSection />
+        <CompanySection />
+        <CustomerSection />
+      </div>
+    </SiteSWRConfig>
   );
 }
-
-

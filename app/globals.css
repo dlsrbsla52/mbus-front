@@ -12,6 +12,11 @@
   --color-brand-blue: #0056b3;
   --color-brand-blue-soft: #e6f0fa;
 
+  /* 공개 사이트(기존 mbus.co.kr) 강조색 */
+  --color-site-navy: #17457d;
+  --color-site-sky: #6fc8ff;
+  --color-site-pink: #e4007f;
+
   --color-brand-gray-50: #f8f9fa;
   --color-brand-gray-100: #e9ecef;
   --color-brand-gray-200: #dee2e6;

@@ -11,9 +11,9 @@ const notoHighlight = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: "미디어버스 ｜ MEDIA BUS",
-  description: "미디어버스 - 최고의 디지털 솔루션 파트너",
-  keywords: ["미디어버스", "디지털마케팅", "컨텐츠제작", "SI", "클라우드"],
+  title: "미디어버스 ｜ 서울버스TV 정류장 안내 광고",
+  description: "버스 내부TV 광고 | 정류장 도착 안내 광고·디지털사이니지 미디어버스",
+  keywords: ["미디어버스", "서울버스TV", "정류장 안내 광고", "버스 내부TV 광고", "디지털사이니지"],
 };
 
 export default function RootLayout({
