@@ -1,10 +1,12 @@
 import { api } from '../client';
 import { toPageResult } from '../types';
 import type { ApiResponse, BackendPage, PageResult } from '../types';
+import { toApiOffsetDateTime } from '../date-serializer';
 import type { MemberStatus, MemberType } from '../member';
 
 /** 계약 상태 — iam `AdminBusinessContractResponse.status` */
 export type AdminContractStatus = 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+export type AdminContractStatusTarget = Exclude<AdminContractStatus, 'PENDING'>;
 /** 납부 주기 */
 export type ContractPaymentCycle = 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
 /** 납부 방법 */
@@ -46,7 +48,8 @@ export interface AdminBusinessContract {
   stopId: string;
   stopNumber?: string | null;
   stopName?: string | null;
-  memberId: string;
+  memberId?: string | null;
+  managerId?: string | null;
   contractName: string;
   status: AdminContractStatus;
   contractStartDate: string;
@@ -88,7 +91,77 @@ interface RawMemberContractList {
   contracts: BackendPage<AdminBusinessContract>;
 }
 
+export interface AdminContractSearchParams extends MemberContractListParams {
+  keyword?: string;
+  status?: AdminContractStatus;
+  memberId?: string;
+  stopId?: string;
+  startFrom?: string;
+  startThrough?: string;
+}
+
+export type AdminContractCreateInput = {
+  stopId: string;
+  contractName: string;
+  startDate: string;
+  totalAmount?: string;
+  payAmount?: string;
+  paymentCycle: ContractPaymentCycle;
+  paymentMethod: ContractPaymentMethod;
+  memberId?: string;
+  managerId?: string;
+  note?: string;
+} & ({ endDate: string; durationMonths?: never } | { endDate?: never; durationMonths: number });
+
+type CreatedContract = Pick<
+  AdminBusinessContract,
+  'id' | 'contractName' | 'stopId' | 'stopNumber' | 'stopName' | 'memberId' |
+  'status' | 'contractStartDate' | 'contractEndDate' | 'createdAt'
+>;
+
+export const UUID_PATTERN = '[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}';
+
+const CONTRACT_PATH = '/api/v1/admin/contract';
+
 export const AdminContractService = {
+  search: ({ startFrom, startThrough, ...params }: AdminContractSearchParams) =>
+    api
+      .get<ApiResponse<BackendPage<AdminBusinessContract>>>(CONTRACT_PATH, {
+        params: {
+          ...params,
+          contractStartFrom: startFrom ? toApiOffsetDateTime(startFrom) : undefined,
+          contractStartTo: startThrough ? toApiOffsetDateTime(startThrough, '23:59:59.999999') : undefined,
+        },
+      })
+      .then((res) => toPageResult(res.data.data)),
+
+  detail: (id: string) =>
+    api.get<ApiResponse<AdminBusinessContract>>(`${CONTRACT_PATH}/${id}`).then((res) => res.data.data),
+
+  updateStatus: (id: string, input: { status: AdminContractStatusTarget; cancelReason?: string }) =>
+    api.put<ApiResponse<null>>(`${CONTRACT_PATH}/${id}/status`, input).then((res) => res.data.data),
+
+  updatePaymentStatus: (
+    id: string,
+    { paymentStatus, paidAmount, paidAt }: {
+      paymentStatus: ContractPaymentStatus;
+      paidAmount?: string;
+      paidAt?: string;
+    },
+  ) =>
+    api.put<ApiResponse<null>>(`${CONTRACT_PATH}/${id}/payment-status`, {
+      paymentStatus,
+      paidAmount,
+      paidAt: paidAt ? toApiOffsetDateTime(paidAt, paidAt.slice(11)) : undefined,
+    }).then((res) => res.data.data),
+
+  create: ({ startDate, endDate, ...input }: AdminContractCreateInput) =>
+    api.post<ApiResponse<CreatedContract>>(CONTRACT_PATH, {
+      ...input,
+      contractStartDate: toApiOffsetDateTime(startDate),
+      contractEndDate: endDate ? toApiOffsetDateTime(endDate) : undefined,
+    }).then((res) => res.data.data),
+
   /**
    * 매니저 계약 목록 조회
    * GET /api/v1/admin/contract/member/{memberId}
@@ -98,7 +171,7 @@ export const AdminContractService = {
     params: MemberContractListParams = {},
   ): Promise<AdminMemberContractList> =>
     api
-      .get<ApiResponse<RawMemberContractList>>(`/api/v1/admin/contract/member/${memberId}`, {
+      .get<ApiResponse<RawMemberContractList>>(`${CONTRACT_PATH}/member/${memberId}`, {
         params,
       })
       .then((res) => ({

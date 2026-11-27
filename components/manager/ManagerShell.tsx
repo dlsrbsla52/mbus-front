@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { LogOut, Menu, X } from 'lucide-react';
+import type { RequireAuthOptions } from '@/hooks/useRequireAuth';
 import ProtectedShell from '@/components/auth/ProtectedShell';
 import Sidebar from './Sidebar';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -10,9 +11,13 @@ import { AuthService } from '@/lib/api/auth';
 import { useRouter } from 'next/navigation';
 import { loginPathFor } from '@/lib/auth/site';
 
-export default function ManagerShell({ children }: { children: React.ReactNode }) {
+export default function ManagerShell({
+  children,
+  requirePermission = 'MANAGE',
+  requireMemberType,
+}: { children: React.ReactNode } & RequireAuthOptions) {
   return (
-    <ProtectedShell requirePermission="MANAGE">
+    <ProtectedShell requirePermission={requirePermission} requireMemberType={requireMemberType}>
       <ManagerLayout>{children}</ManagerLayout>
     </ProtectedShell>
   );

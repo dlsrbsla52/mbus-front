@@ -54,6 +54,7 @@ export interface ManagerNavItem {
   label: string;
   href: string;
   icon: string;
+  exact?: boolean;
   requirePermission?: Permission;
   requireMemberType?: MemberType[];
 }
@@ -62,6 +63,23 @@ export interface ManagerNavGroup {
   title: string;
   items: ManagerNavItem[];
 }
+
+export const CONTRACT_MANAGE_NAV = {
+  label: "계약 관리",
+  href: "/manager/contract",
+  icon: "FileSignature",
+  exact: true,
+  requirePermission: "MANAGE",
+  requireMemberType: ["ADMIN_MASTER", "ADMIN_DEVELOPER"],
+} satisfies ManagerNavItem;
+
+export const CONTRACT_CREATE_NAV = {
+  label: "계약 등록",
+  href: "/manager/contract/new",
+  icon: "FileSignature",
+  requirePermission: "WRITE",
+  requireMemberType: ["ADMIN_USER", "ADMIN_MASTER", "ADMIN_DEVELOPER"],
+} satisfies ManagerNavItem;
 
 export const MANAGER_NAV: ManagerNavGroup[] = [
   {
@@ -92,7 +110,8 @@ export const MANAGER_NAV: ManagerNavGroup[] = [
     title: "거래",
     items: [
       { label: "예약 관리", href: "/manager/reservation", icon: "CalendarClock" },
-      { label: "계약 관리", href: "/manager/contract", icon: "FileSignature" },
+      CONTRACT_MANAGE_NAV,
+      CONTRACT_CREATE_NAV,
     ],
   },
   {

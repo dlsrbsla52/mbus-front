@@ -80,8 +80,8 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
                 {items.map((item) => {
                   const Icon = ICONS[item.icon];
                   const active =
-                    item.href === '/manager'
-                      ? pathname === '/manager'
+                    item.exact || item.href === '/manager'
+                      ? pathname === item.href
                       : pathname === item.href ||
                         pathname?.startsWith(`${item.href}/`);
                   return (
